@@ -1,0 +1,615 @@
+GRAVEYARD PROTOCOL - THIRD PARTY ATTRIBUTIONS
+==============================================
+
+Package: @babel/runtime@7.29.2
+License: MIT
+Repository: https://github.com/babel/babel
+Publisher: The Babel Team
+----------------------------------------------
+
+Package: @graveyardprotocol/gp-cli@1.0.0
+License: MIT*
+Repository: https://github.com/GraveyardProtocol/gp-cli
+Publisher: Graveyard Protocol
+----------------------------------------------
+
+Package: @inquirer/ansi@2.0.4
+License: MIT
+Repository: https://github.com/SBoudrias/Inquirer.js
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: @inquirer/checkbox@5.1.2
+License: MIT
+Repository: https://github.com/SBoudrias/Inquirer.js
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: @inquirer/confirm@6.0.10
+License: MIT
+Repository: https://github.com/SBoudrias/Inquirer.js
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: @inquirer/core@11.1.7
+License: MIT
+Repository: https://github.com/SBoudrias/Inquirer.js
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: @inquirer/editor@5.0.10
+License: MIT
+Repository: https://github.com/SBoudrias/Inquirer.js
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: @inquirer/expand@5.0.10
+License: MIT
+Repository: https://github.com/SBoudrias/Inquirer.js
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: @inquirer/external-editor@2.0.4
+License: MIT
+Repository: https://github.com/SBoudrias/Inquirer.js
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: @inquirer/figures@2.0.4
+License: MIT
+Repository: https://github.com/SBoudrias/Inquirer.js
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: @inquirer/input@5.0.10
+License: MIT
+Repository: https://github.com/SBoudrias/Inquirer.js
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: @inquirer/number@4.0.10
+License: MIT
+Repository: https://github.com/SBoudrias/Inquirer.js
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: @inquirer/password@5.0.10
+License: MIT
+Repository: https://github.com/SBoudrias/Inquirer.js
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: @inquirer/prompts@8.3.2
+License: MIT
+Repository: https://github.com/SBoudrias/Inquirer.js
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: @inquirer/rawlist@5.2.6
+License: MIT
+Repository: https://github.com/SBoudrias/Inquirer.js
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: @inquirer/search@4.1.6
+License: MIT
+Repository: https://github.com/SBoudrias/Inquirer.js
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: @inquirer/select@5.1.2
+License: MIT
+Repository: https://github.com/SBoudrias/Inquirer.js
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: @inquirer/type@4.0.4
+License: MIT
+Repository: https://github.com/SBoudrias/Inquirer.js
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: @noble/curves@1.9.7
+License: MIT
+Repository: https://github.com/paulmillr/noble-curves
+Publisher: Paul Miller
+----------------------------------------------
+
+Package: @noble/hashes@1.8.0
+License: MIT
+Repository: https://github.com/paulmillr/noble-hashes
+Publisher: Paul Miller
+----------------------------------------------
+
+Package: @solana/buffer-layout-utils@0.2.0
+License: Apache-2.0
+Repository: https://github.com/solana-labs/buffer-layout-utils
+Publisher: Solana Maintainers
+----------------------------------------------
+
+Package: @solana/buffer-layout@4.0.1
+License: MIT
+Repository: https://github.com/solana-labs/buffer-layout
+Publisher: Peter A. Bigot
+----------------------------------------------
+
+Package: @solana/codecs-core@2.0.0-rc.1
+License: MIT
+Repository: https://github.com/solana-labs/solana-web3.js
+Publisher: Solana Labs Maintainers
+----------------------------------------------
+
+Package: @solana/codecs-core@2.3.0
+License: MIT
+Repository: https://github.com/anza-xyz/kit
+Publisher: Solana Labs Maintainers
+----------------------------------------------
+
+Package: @solana/codecs-data-structures@2.0.0-rc.1
+License: MIT
+Repository: https://github.com/solana-labs/solana-web3.js
+Publisher: Solana Labs Maintainers
+----------------------------------------------
+
+Package: @solana/codecs-numbers@2.0.0-rc.1
+License: MIT
+Repository: https://github.com/solana-labs/solana-web3.js
+Publisher: Solana Labs Maintainers
+----------------------------------------------
+
+Package: @solana/codecs-numbers@2.3.0
+License: MIT
+Repository: https://github.com/anza-xyz/kit
+Publisher: Solana Labs Maintainers
+----------------------------------------------
+
+Package: @solana/codecs-strings@2.0.0-rc.1
+License: MIT
+Repository: https://github.com/solana-labs/solana-web3.js
+Publisher: Solana Labs Maintainers
+----------------------------------------------
+
+Package: @solana/codecs@2.0.0-rc.1
+License: MIT
+Repository: https://github.com/solana-labs/solana-web3.js
+Publisher: Solana Labs Maintainers
+----------------------------------------------
+
+Package: @solana/errors@2.0.0-rc.1
+License: MIT
+Repository: https://github.com/solana-labs/solana-web3.js
+Publisher: Solana Labs Maintainers
+----------------------------------------------
+
+Package: @solana/errors@2.3.0
+License: MIT
+Repository: https://github.com/anza-xyz/kit
+Publisher: Solana Labs Maintainers
+----------------------------------------------
+
+Package: @solana/options@2.0.0-rc.1
+License: MIT
+Repository: https://github.com/solana-labs/solana-web3.js
+Publisher: Solana Labs Maintainers
+----------------------------------------------
+
+Package: @solana/spl-token-group@0.0.7
+License: Apache-2.0
+Repository: https://github.com/solana-labs/solana-program-library
+Publisher: Solana Labs Maintainers
+----------------------------------------------
+
+Package: @solana/spl-token-metadata@0.1.6
+License: Apache-2.0
+Repository: https://github.com/solana-labs/solana-program-library
+Publisher: Solana Labs Maintainers
+----------------------------------------------
+
+Package: @solana/spl-token@0.4.14
+License: Apache-2.0
+Repository: https://github.com/solana-labs/solana-program-library
+Publisher: Solana Labs Maintainers
+----------------------------------------------
+
+Package: @solana/web3.js@1.98.4
+License: MIT
+Repository: https://github.com/solana-foundation/solana-web3.js
+Publisher: Solana Labs Maintainers
+----------------------------------------------
+
+Package: @swc/helpers@0.5.19
+License: Apache-2.0
+Repository: https://github.com/swc-project/swc
+Publisher: 강동윤
+----------------------------------------------
+
+Package: @types/connect@3.4.38
+License: MIT
+Repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+Publisher: N/A
+----------------------------------------------
+
+Package: @types/node@12.20.55
+License: MIT
+Repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+Publisher: N/A
+----------------------------------------------
+
+Package: @types/node@25.5.0
+License: MIT
+Repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+Publisher: N/A
+----------------------------------------------
+
+Package: @types/uuid@10.0.0
+License: MIT
+Repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+Publisher: N/A
+----------------------------------------------
+
+Package: @types/ws@7.4.7
+License: MIT
+Repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+Publisher: N/A
+----------------------------------------------
+
+Package: @types/ws@8.18.1
+License: MIT
+Repository: https://github.com/DefinitelyTyped/DefinitelyTyped
+Publisher: N/A
+----------------------------------------------
+
+Package: agentkeepalive@4.6.0
+License: MIT
+Repository: https://github.com/node-modules/agentkeepalive
+Publisher: fengmk2
+----------------------------------------------
+
+Package: base-x@3.0.11
+License: MIT
+Repository: https://github.com/cryptocoinjs/base-x
+Publisher: Daniel Cousens
+----------------------------------------------
+
+Package: base-x@5.0.1
+License: MIT
+Repository: https://github.com/cryptocoinjs/base-x
+Publisher: Daniel Cousens
+----------------------------------------------
+
+Package: base64-js@1.5.1
+License: MIT
+Repository: https://github.com/beatgammit/base64-js
+Publisher: T. Jameson Little
+----------------------------------------------
+
+Package: bigint-buffer@1.1.5
+License: Apache-2.0
+Repository: https://github.com/no2chem/bigint-buffer
+Publisher: N/A
+----------------------------------------------
+
+Package: bignumber.js@9.3.1
+License: MIT
+Repository: https://github.com/MikeMcl/bignumber.js
+Publisher: Michael Mclaughlin
+----------------------------------------------
+
+Package: bindings@1.5.0
+License: MIT
+Repository: https://github.com/TooTallNate/node-bindings
+Publisher: Nathan Rajlich
+----------------------------------------------
+
+Package: bn.js@5.2.3
+License: MIT
+Repository: https://github.com/indutny/bn.js
+Publisher: Fedor Indutny
+----------------------------------------------
+
+Package: borsh@0.7.0
+License: Apache-2.0
+Repository: https://github.com/near/borsh-js
+Publisher: Near Inc
+----------------------------------------------
+
+Package: bs58@4.0.1
+License: MIT
+Repository: https://github.com/cryptocoinjs/bs58
+Publisher: N/A
+----------------------------------------------
+
+Package: bs58@6.0.0
+License: MIT
+Repository: https://github.com/cryptocoinjs/bs58
+Publisher: N/A
+----------------------------------------------
+
+Package: buffer@6.0.3
+License: MIT
+Repository: https://github.com/feross/buffer
+Publisher: Feross Aboukhadijeh
+----------------------------------------------
+
+Package: chalk@5.6.2
+License: MIT
+Repository: https://github.com/chalk/chalk
+Publisher: N/A
+----------------------------------------------
+
+Package: chardet@2.1.1
+License: MIT
+Repository: https://github.com/runk/node-chardet
+Publisher: Dmitry Shirokov
+----------------------------------------------
+
+Package: cli-width@4.1.0
+License: ISC
+Repository: https://github.com/knownasilya/cli-width
+Publisher: Ilya Radchenko
+----------------------------------------------
+
+Package: commander@12.1.0
+License: MIT
+Repository: https://github.com/tj/commander.js
+Publisher: TJ Holowaychuk
+----------------------------------------------
+
+Package: commander@14.0.3
+License: MIT
+Repository: https://github.com/tj/commander.js
+Publisher: TJ Holowaychuk
+----------------------------------------------
+
+Package: commander@2.20.3
+License: MIT
+Repository: https://github.com/tj/commander.js
+Publisher: TJ Holowaychuk
+----------------------------------------------
+
+Package: delay@5.0.0
+License: MIT
+Repository: https://github.com/sindresorhus/delay
+Publisher: Sindre Sorhus
+----------------------------------------------
+
+Package: es6-promise@4.2.8
+License: MIT
+Repository: https://github.com/stefanpenner/es6-promise
+Publisher: Yehuda Katz, Tom Dale, Stefan Penner and contributors
+----------------------------------------------
+
+Package: es6-promisify@5.0.0
+License: MIT
+Repository: https://github.com/digitaldesignlabs/es6-promisify
+Publisher: Mike Hall
+----------------------------------------------
+
+Package: eventemitter3@5.0.4
+License: MIT
+Repository: https://github.com/primus/eventemitter3
+Publisher: Arnout Kazemier
+----------------------------------------------
+
+Package: eyes@0.1.8
+License: MIT
+Repository: N/A
+Publisher: Alexis Sellier
+----------------------------------------------
+
+Package: fast-stable-stringify@1.0.0
+License: MIT
+Repository: https://github.com/nickyout/fast-stable-stringify
+Publisher: Nicky Out
+----------------------------------------------
+
+Package: fast-string-truncated-width@3.0.3
+License: MIT
+Repository: https://github.com/fabiospampinato/fast-string-truncated-width
+Publisher: N/A
+----------------------------------------------
+
+Package: fast-string-width@3.0.2
+License: MIT
+Repository: https://github.com/fabiospampinato/fast-string-width
+Publisher: N/A
+----------------------------------------------
+
+Package: fast-wrap-ansi@0.2.0
+License: MIT
+Repository: https://github.com/43081j/fast-wrap-ansi
+Publisher: James Garbutt
+----------------------------------------------
+
+Package: fastestsmallesttextencoderdecoder@1.0.22
+License: CC0-1.0
+Repository: https://github.com/anonyco/FastestSmallestTextEncoderDecoder
+Publisher: Jack Giffin
+----------------------------------------------
+
+Package: file-uri-to-path@1.0.0
+License: MIT
+Repository: https://github.com/TooTallNate/file-uri-to-path
+Publisher: Nathan Rajlich
+----------------------------------------------
+
+Package: humanize-ms@1.2.1
+License: MIT
+Repository: https://github.com/node-modules/humanize-ms
+Publisher: dead-horse
+----------------------------------------------
+
+Package: iconv-lite@0.7.2
+License: MIT
+Repository: https://github.com/pillarjs/iconv-lite
+Publisher: Alexander Shtuchkin
+----------------------------------------------
+
+Package: ieee754@1.2.1
+License: BSD-3-Clause
+Repository: https://github.com/feross/ieee754
+Publisher: Feross Aboukhadijeh
+----------------------------------------------
+
+Package: inquirer@13.3.2
+License: MIT
+Repository: https://github.com/SBoudrias/Inquirer.js
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: isomorphic-ws@4.0.1
+License: MIT
+Repository: https://github.com/heineiuo/isomorphic-ws
+Publisher: @heineiuo
+----------------------------------------------
+
+Package: jayson@4.3.0
+License: MIT
+Repository: https://github.com/tedeh/jayson
+Publisher: Tedde Lundgren
+----------------------------------------------
+
+Package: json-stringify-safe@5.0.1
+License: ISC
+Repository: https://github.com/isaacs/json-stringify-safe
+Publisher: Isaac Z. Schlueter
+----------------------------------------------
+
+Package: ms@2.1.3
+License: MIT
+Repository: https://github.com/vercel/ms
+Publisher: N/A
+----------------------------------------------
+
+Package: mute-stream@3.0.0
+License: ISC
+Repository: https://github.com/npm/mute-stream
+Publisher: GitHub Inc.
+----------------------------------------------
+
+Package: node-fetch@2.7.0
+License: MIT
+Repository: https://github.com/bitinn/node-fetch
+Publisher: David Frank
+----------------------------------------------
+
+Package: rpc-websockets@9.3.6
+License: LGPL-3.0-only
+Repository: https://github.com/elpheria/rpc-websockets
+Publisher: Elpheria
+----------------------------------------------
+
+Package: run-async@4.0.6
+License: MIT
+Repository: https://github.com/SBoudrias/run-async
+Publisher: Simon Boudrias
+----------------------------------------------
+
+Package: rxjs@7.8.2
+License: Apache-2.0
+Repository: https://github.com/reactivex/rxjs
+Publisher: Ben Lesh
+----------------------------------------------
+
+Package: safe-buffer@5.2.1
+License: MIT
+Repository: https://github.com/feross/safe-buffer
+Publisher: Feross Aboukhadijeh
+----------------------------------------------
+
+Package: safer-buffer@2.1.2
+License: MIT
+Repository: https://github.com/ChALkeR/safer-buffer
+Publisher: Nikita Skovoroda
+----------------------------------------------
+
+Package: signal-exit@4.1.0
+License: ISC
+Repository: https://github.com/tapjs/signal-exit
+Publisher: Ben Coe
+----------------------------------------------
+
+Package: stream-chain@2.2.5
+License: BSD-3-Clause
+Repository: https://github.com/uhop/stream-chain
+Publisher: Eugene Lazutkin
+----------------------------------------------
+
+Package: stream-json@1.9.1
+License: BSD-3-Clause
+Repository: https://github.com/uhop/stream-json
+Publisher: Eugene Lazutkin
+----------------------------------------------
+
+Package: superstruct@2.0.2
+License: MIT
+Repository: https://github.com/ianstormtaylor/superstruct
+Publisher: N/A
+----------------------------------------------
+
+Package: text-encoding-utf-8@1.0.2
+License: Public Domain
+Repository: https://github.com/arv/text-encoding-utf-8
+Publisher: Erik Arvidsson
+----------------------------------------------
+
+Package: tr46@0.0.3
+License: MIT
+Repository: https://github.com/Sebmaster/tr46.js
+Publisher: Sebastian Mayr
+----------------------------------------------
+
+Package: tslib@2.8.1
+License: 0BSD
+Repository: https://github.com/Microsoft/tslib
+Publisher: Microsoft Corp.
+----------------------------------------------
+
+Package: typescript@5.9.3
+License: Apache-2.0
+Repository: https://github.com/microsoft/TypeScript
+Publisher: Microsoft Corp.
+----------------------------------------------
+
+Package: undici-types@7.18.2
+License: MIT
+Repository: https://github.com/nodejs/undici
+Publisher: N/A
+----------------------------------------------
+
+Package: uuid@11.1.0
+License: MIT
+Repository: https://github.com/uuidjs/uuid
+Publisher: N/A
+----------------------------------------------
+
+Package: uuid@8.3.2
+License: MIT
+Repository: https://github.com/uuidjs/uuid
+Publisher: N/A
+----------------------------------------------
+
+Package: webidl-conversions@3.0.1
+License: BSD-2-Clause
+Repository: https://github.com/jsdom/webidl-conversions
+Publisher: Domenic Denicola
+----------------------------------------------
+
+Package: whatwg-url@5.0.0
+License: MIT
+Repository: https://github.com/jsdom/whatwg-url
+Publisher: Sebastian Mayr
+----------------------------------------------
+
+Package: ws@7.5.10
+License: MIT
+Repository: https://github.com/websockets/ws
+Publisher: Einar Otto Stangvik
+----------------------------------------------
+
+Package: ws@8.19.0
+License: MIT
+Repository: https://github.com/websockets/ws
+Publisher: Einar Otto Stangvik
+----------------------------------------------
+

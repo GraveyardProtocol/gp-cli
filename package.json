@@ -1,0 +1,56 @@
+{
+  "name": "@graveyardprotocol/gp-cli",
+  "version": "1.0.0",
+  "description": "Graveyard Protocol CLI — close empty Solana SPL token accounts and reclaim locked SOL",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "bin": {
+    "gp": "bin/gp.mjs"
+  },
+  "preferGlobal": true,
+  "files": [
+    "bin/",
+    "src/",
+    "LICENSE.md",
+    "THIRD_PARTY_LICENSES"
+  ],
+  "scripts": {
+    "start": "node bin/gp.mjs"
+  },
+  "dependencies": {
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.98.0",
+    "bs58": "^6.0.0",
+    "commander": "^14.0.3",
+    "inquirer": "^13.3.2"
+  },
+  "keywords": [
+    "solana",
+    "spl",
+    "token",
+    "graveyard-protocol",
+    "cli",
+    "reclaim",
+    "rent-exempt",
+    "refund your sol",
+    "unclaimed sol",
+    "claim your sol",
+    "sol incinerator"
+  ],
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Graveyard Protocol <dev@graveyardprotocol.io>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GraveyardProtocol/gp-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/graveyardprotocol/gp-cli/issues"
+  },
+  "homepage": "https://github.com/graveyardprotocol/gp-cli#readme",
+  "devDependencies": {
+    "javascript-obfuscator": "^5.3.1",
+    "license-checker": "^25.0.1"
+  }
+}
