@@ -2,7 +2,7 @@
  * @license
  * Graveyard Protocol CLI
  * Copyright (c) 2026 Graveyard Protocol. All rights reserved.
- * This software and its source code are proprietary. 
+ * This software and its source code are proprietary.
  * Unauthorized copying, modification, or distribution is strictly prohibited.
  */
 
@@ -96,4 +96,26 @@ export async function executeBatch(walletAddress, transactions) {
 export async function getLatestBlockhash() {
   const res = await apiFetch('GET', '/api/solana/blockhash');
   return res.data; // { blockhash, lastValidBlockHeight }
+}
+
+// ── 6. Get User Epoch Data ────────────────────────────────────────────────────
+// GET /api/wallet/epoch/data/{walletAddress}
+// Returns: { currentEpoch, previousEpoch }
+// Each epoch: { epochStartDate, userGhostEarned, userGhostReferrals,
+//               userAccountsClosed, userSoul, claimState,
+//               totalUsers, totalGhostEarned, totalSoul }
+
+export async function getEpochData(walletAddress) {
+  const res = await apiFetch('GET', `/api/wallet/epoch/data/${walletAddress}`);
+  return res.data; // { currentEpoch, previousEpoch }
+}
+
+
+// ── 7. Get User Lifetime Stats ────────────────────────────────────────────────
+// GET /api/stats/user/{walletAddress}
+// Returns: { totalAccountsClosed, totalSolsRecovered, totalSoulClaimed }
+
+export async function getUserStats(walletAddress) {
+  const res = await apiFetch('GET', `/api/stats/user/${walletAddress}`);
+  return res.data; // { totalAccountsClosed, totalSolsRecovered, totalSoulClaimed }
 }

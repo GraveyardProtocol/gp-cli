@@ -2,8 +2,9 @@
 import { Command } from 'commander';
 import addWallet    from '../src/commands/addWallet.mjs';
 import removeWallet from '../src/commands/removeWallet.mjs';
-import listWallets from '../src/commands/listWallets.mjs';
+import listWallets  from '../src/commands/listWallets.mjs';
 import closeEmpty   from '../src/commands/closeEmpty.mjs';
+import stats        from '../src/commands/stats.mjs';
 import { printBanner } from '../src/display.mjs';
 
 const program = new Command();
@@ -38,6 +39,14 @@ program
   .option('--dry-run',           'Run full pipeline but skip execution — show simulated results')
   .option('--verbose',           'Show detailed sub-step output for each batch')
   .action(closeEmpty);
+
+// ── Stats command ─────────────────────────────────────────────────────────────
+program
+  .command('stats')
+  .description('Show Ghost Point and SOL earnings for the current and previous epoch')
+  .option('--all',              'Show stats for all saved wallets in sequence')
+  .option('--wallet <address>', 'Look up any wallet address directly (no saved wallet needed)')
+  .action(stats);
 
 // ── Print banner before help when no arguments are provided ───────────────────
 if (process.argv.length === 2) {
