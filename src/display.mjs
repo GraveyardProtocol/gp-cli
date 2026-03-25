@@ -189,3 +189,163 @@ export function printSuccess(msg) {
 export function printWarning(msg) {
   console.log(`  ${c('yellow', '⚠')} ${msg}`);
 }
+
+
+// ── Lifetime user stats block renderer ───────────────────────────────────────
+
+export function printUserStatsBlock(walletAddress, userStats) {
+  const divider = c('grey', '  ──────────────────────────────────────');
+  console.log('');
+  console.log(c('bold', '  Lifetime Stats'));
+  console.log(divider);
+
+  if (!userStats) {
+    console.log(c('grey', '  No lifetime stats available.'));
+    return;
+  }
+
+  console.log(`  Total accounts closed : ${c('yellow', (userStats.totalAccountsClosed ?? 0).toLocaleString())}`);
+  console.log(`  Total SOL recovered   : ${c('green',  ((userStats.totalSolsRecovered ?? 0)).toFixed(6))} SOL`);
+  console.log(`  Total SOUL claimed    : ${c('cyan',   ((userStats.totalSoulClaimed   ?? 0)).toFixed(6))} SOUL`);
+}
+
+// ── Epoch block renderer ──────────────────────────────────────────────────────
+
+export function printEpochStatsBlock(label, epoch) {
+  const divider = c('grey', '  ──────────────────────────────────────');
+  console.log('');
+  console.log(c('bold', `  ${label}`));
+  console.log(divider);
+
+  if (!epoch) {
+    console.log(c('grey', '  No data available for this epoch.'));
+    return;
+  }
+
+  const dateRange = formatEpochRange(epoch.epochStartDate);
+  const userGhost = (Number(epoch.userGhostEarned)+ Number(epoch.userGhostReferrals));
+
+  // ── User section ─────────────────────────────────────────────────────────
+  console.log(`  ${c('dim', 'Period')}                : ${c('white', dateRange)}`);
+  console.log('');
+  console.log(c('dim', '  Your activity'));
+  console.log(`  Accounts closed      : ${c('yellow', epoch.userAccountsClosed.toLocaleString())}`);
+  console.log(`  SOL earned           : ${c('green',  epoch.userSolsRecovered.toFixed(6))} SOL`);
+  console.log(`  Ghost Points earned  : ${c('cyan',   userGhost.toLocaleString())}`);
+    // ── User share ────────────────────────────────────────────────────────────
+  if (epoch.totalGhostEarned > 0 && epoch.userGhostEarned > 0) {
+    const share = ((userGhost / epoch.totalGhostEarned) * 100).toFixed(4);
+    console.log(`  Your Ghost share     : ${c('cyan', share + '%')}`);
+  }
+
+  if (label === "Previous Epoch") {
+    console.log(`  SOUL earned          : ${c('cyan', epoch.userSoul.toLocaleString())}`);
+    const claimBadge = epoch.claimState === 'Yes'
+      ? c('green', '✔ Claimed')
+      : c('red', '✖ Not Claimed');
+    console.log(`  Claim state          : ${claimBadge}`);
+  }
+
+  // ── Global section ────────────────────────────────────────────────────────
+  console.log('');
+  console.log(c('dim', '  Network-wide'));
+  console.log(`  Participants         : ${c('white',  epoch.totalUsers.toLocaleString())}`);
+  console.log(`  Total Ghost earned   : ${c('cyan',   epoch.totalGhostEarned.toLocaleString())}`);
+  if (label === "Previous Epoch") {
+    console.log(`  Total SOUL allocated : ${c('green', epoch.totalSoul?.toFixed ? epoch.totalSoul.toFixed(6) : '—')} SOUL`);
+  }
+}
+
+// ── Statistics Summary table (--all mode) ────────────────────────────────────────────────
+export function printStatsSummaryTable(rows) {
+  // rows: [{ walletAddress, description, userStats, currentEpoch, previousEpoch }]
+  const divider = c('grey', '─'.repeat(115));
+  const hdr = (s) => c('bold', s);
+
+  console.log('');
+  console.log(c('bold', '  All-Wallet Summary'));
+  console.log('  ' + divider);
+
+  // Header
+  console.log(
+    '  ' +
+    hdr(padR('Wallet',          14)) + '  ' +
+    hdr(padR('Description',     16)) + '  ' +
+    hdr(padL('Closed(life)',    14)) + '  ' +
+    hdr(padL('SOL(life)',       10)) + '  ' +
+    hdr(padL('SOUL(life)',      11)) + '  ' +
+    hdr(padL('Closed(cur)',     12)) + '  ' +
+    hdr(padL('SOL(cur)',        10)) + '  ' +
+    hdr(padL('GHOST(cur)',      11))
+  );
+
+  console.log('  ' + divider);
+
+  for (const row of rows) {
+    const curUserGhost = (Number(row.currentEpoch?.userGhostEarned??0)+ Number(row.currentEpoch?.userGhostReferrals??0));
+
+    const shortWallet = row.walletAddress.slice(0, 6) + '…' + row.walletAddress.slice(-6);
+    const desc        = (row.description || '—').slice(0, 18);
+    const closed      = (row.userStats?.totalAccountsClosed ?? 0).toLocaleString();
+    const sol         = (row.userStats?.totalSolsRecovered  ?? 0).toFixed(4);
+    const soul        = (row.userStats?.totalSoulClaimed    ?? 0).toFixed(4);
+    const closedCur    = (row.currentEpoch?.userAccountsClosed  ?? 0).toLocaleString();
+    const solCur   = (row.currentEpoch?.userSolsRecovered ?? 0).toFixed(4);
+    const ghostCur   = curUserGhost.toLocaleString();
+
+    console.log(
+      '  ' +
+      c('dim',    padR(shortWallet, 14)) + '  ' +
+      c('white',  padR(desc,        16)) + '  ' +
+      c('yellow', padL(closed,      14)) + '  ' +
+      c('yellow',  padL(sol,        10)) + '  ' +
+      c('yellow',   padL(soul,      11)) + '  ' +
+      c('cyan',   padL(closedCur,   12)) + '  ' +
+      c('cyan',   padL(solCur,      10)) + '  ' +
+      c('cyan',   padL(ghostCur,    11))
+    );
+  }
+
+  console.log('  ' + divider);
+
+  // Totals row
+  const totClosed = rows.reduce((s, r) => s + (r.userStats?.totalAccountsClosed ?? 0), 0);
+  const totSol    = rows.reduce((s, r) => s + (r.userStats?.totalSolsRecovered  ?? 0), 0);
+  const totSoul   = rows.reduce((s, r) => s + (r.userStats?.totalSoulClaimed    ?? 0), 0);
+  const totClosedC = rows.reduce((s, r) => s + (r.currentEpoch?.totalAccountsClosed ?? 0), 0);
+  const totSolC    = rows.reduce((s, r) => s + (r.currentEpoch?.totalSolsRecovered  ?? 0), 0);
+  const totGhostC = rows.reduce((s, r) => s + (r.currentEpoch?.userGhostEarned  ?? 0 + r.currentEpoch?.userGhostReferrals  ?? 0), 0);
+
+  console.log(
+    '  ' +
+    c('bold', padR('TOTAL', 18)) + '  ' +
+    padR('', 12) + '  ' +
+    c('green', padL(totClosed.toLocaleString(), 14)) + '  ' +
+    c('green',  padL(totSol.toFixed(4),          10)) + '  ' +
+    c('green',   padL(totSoul.toFixed(4),         11)) + '  ' +
+    c('green', padL(totClosedC.toLocaleString(), 12)) + '  ' +
+    c('green',  padL(totSolC.toFixed(4),          10)) + '  ' +
+    c('green',   padL(totGhostC.toLocaleString(), 11))
+  );
+
+  console.log('  ' + divider);
+  console.log('');
+}
+
+function padR(s, n) { return String(s).padEnd(n).slice(0, n); }
+function padL(s, n) { return String(s).padStart(n).slice(-n); }
+
+function formatEpochRange(yyyymmdd) {
+  const s = String(yyyymmdd);
+  const start = new Date(Date.UTC(
+    parseInt(s.slice(0, 4), 10),
+    parseInt(s.slice(4, 6), 10) - 1,
+    parseInt(s.slice(6, 8), 10),
+  ));
+  const end = new Date(start);
+  end.setUTCDate(start.getUTCDate() + 6);
+  const fmt = (d) => d.toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC',
+  });
+  return `${fmt(start)} → ${fmt(end)}`;
+}

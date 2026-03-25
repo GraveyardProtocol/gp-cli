@@ -7,7 +7,7 @@
  */
 
 import inquirer from 'inquirer';
-import { loadWallet, loadWalletFile } from '../walletManager.mjs';
+import { loadWallet, loadWalletFile, selectWallet } from '../walletManager.mjs';
 import { scanWallet, getBatchCount, processBatch, executeBatch, getLatestBlockhash } from '../api.mjs';
 import { buildAndSignAll } from '../solana.mjs';
 import {
@@ -36,34 +36,6 @@ function isExitPrompt(err) {
 function maybeSpinner(verbose, text) {
   if (verbose) return createSpinner(text);
   return { start: () => {}, succeed: () => {}, fail: () => {} };
-}
-
-// ── Wallet selection prompt ───────────────────────────────────────────────────
-
-async function selectWallet(walletFile) {
-  if (!walletFile.wallets.length) {
-    throw new Error('No wallets saved. Run `gp add-wallet` first.');
-  }
-
-  let result;
-  try {
-    result = await inquirer.prompt([
-      {
-        type: 'rawlist',
-        name: 'selected',
-        message: 'Select a wallet to use:',
-        choices: walletFile.wallets.map((w) => ({
-          name: `${w.description || 'No description'}  (${w.publicKey})`,
-          value: w.publicKey,
-        })),
-      },
-    ]);
-  } catch (err) {
-    if (isExitPrompt(err)) { console.log('\nAborted.'); process.exit(0); }
-    throw err;
-  }
-
-  return result.selected;
 }
 
 // ── Main close-empty handler ──────────────────────────────────────────────────
