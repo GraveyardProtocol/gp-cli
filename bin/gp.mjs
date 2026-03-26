@@ -5,6 +5,7 @@ import removeWallet from '../src/commands/removeWallet.mjs';
 import listWallets  from '../src/commands/listWallets.mjs';
 import closeEmpty   from '../src/commands/closeEmpty.mjs';
 import stats        from '../src/commands/stats.mjs';
+import claimSoul    from '../src/commands/claimSoul.mjs';
 import { printBanner } from '../src/display.mjs';
 
 const program = new Command();
@@ -47,6 +48,15 @@ program
   .option('--all',              'Show stats for all saved wallets in sequence')
   .option('--wallet <address>', 'Look up any wallet address directly (no saved wallet needed)')
   .action(stats);
+
+// ── Claim SOUL command ────────────────────────────────────────────────────────
+program
+  .command('claim-soul')
+  .description('Claim SOUL tokens earned in the previous epoch')
+  .option('--all',              'Claim for all saved wallets in sequence')
+  .option('--wallet <address>', 'Claim for a specific wallet address directly')
+  .option('--dry-run',          'Preview claimable SOUL without submitting a transaction')
+  .action(claimSoul);
 
 // ── Print banner before help when no arguments are provided ───────────────────
 if (process.argv.length === 2) {
