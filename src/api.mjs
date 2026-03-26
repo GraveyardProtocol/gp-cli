@@ -119,3 +119,16 @@ export async function getUserStats(walletAddress) {
   const res = await apiFetch('GET', `/api/stats/user/${walletAddress}`);
   return res.data; // { totalAccountsClosed, totalSolsRecovered, totalSoulClaimed }
 }
+
+// ── 8. Claim SOUL ─────────────────────────────────────────────────────────────
+// POST /api/wallet/soul/claim
+// Body:    { walletAddress, distributionDate }
+// Returns: { success, data: { txSignature } }
+
+export async function claimSoul(walletAddress, distributionDate) {
+  const res = await apiFetch('POST', '/api/wallet/soul/claim', {
+    walletAddress,
+    distributionDate,
+  });
+  return res.data; // { txSignature }
+}
