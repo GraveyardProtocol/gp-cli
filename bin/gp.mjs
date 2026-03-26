@@ -13,7 +13,7 @@ const program = new Command();
 program
   .name('gp')
   .description('Graveyard Protocol CLI — close empty SPL token accounts and reclaim SOL')
-  .version('1.0.0');
+  .version('1.1.0');
 
 // ── Wallet commands ───────────────────────────────────────────────────────────
 program
