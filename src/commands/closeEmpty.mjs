@@ -2,7 +2,7 @@
  * @license
  * Graveyard Protocol CLI
  * Copyright (c) 2026 Graveyard Protocol. All rights reserved.
- * This software and its source code are proprietary. 
+ * This software and its source code are proprietary.
  * Unauthorized copying, modification, or distribution is strictly prohibited.
  */
 
@@ -26,20 +26,35 @@ import {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-// Detect inquirer's ExitPromptError (thrown on Ctrl+C in v9+)
 function isExitPrompt(err) {
   return err?.name === 'ExitPromptError';
 }
 
-// Returns a spinner when verbose, or a silent no-op when not.
-// The silent fail is a no-op — the caller's catch block handles the throw.
 function maybeSpinner(verbose, text) {
   if (verbose) return createSpinner(text);
   return { start: () => {}, succeed: () => {}, fail: () => {} };
 }
 
-// ── Main close-empty handler ──────────────────────────────────────────────────
-
+// ── Main handler ──────────────────────────────────────────────────────────────
+/**
+ * Agent-compatible flags:
+ *   --wallet <address>   target a specific saved wallet (skips interactive picker)
+ *   --yes / -y           auto-confirm the "close accounts?" prompt
+ *   --all                process every saved wallet in sequence
+ *   --dry-run            simulate without submitting transactions
+ *   --verbose            detailed sub-step output for each batch
+ *
+ * Encryption is handled transparently by loadWallet():
+ *   • Unencrypted wallets (--no-pwd at add-wallet time) → no password prompt,
+ *     fully non-interactive end-to-end when combined with --wallet --yes.
+ *   • Encrypted wallets → password prompt appears as normal.
+ *
+ * Full agent one-liner (unencrypted wallet):
+ *   gp close-empty --wallet <address> --yes
+ *
+ * Full agent one-liner (dry-run, all wallets):
+ *   gp close-empty --all --dry-run --yes
+ */
 export default async function closeEmpty(options) {
   printBanner();
 
@@ -53,8 +68,12 @@ export default async function closeEmpty(options) {
       }
       walletAddresses = walletFile.wallets.map(w => w.publicKey);
       printInfo(`Processing all ${walletAddresses.length} wallet(s).\n`);
+
+    } else if (options.wallet) {
+      walletAddresses = [options.wallet];
+
     } else {
-      const selected = await selectWallet(walletFile);
+      const selected  = await selectWallet(walletFile);
       walletAddresses = [selected];
     }
 
@@ -73,10 +92,11 @@ export default async function closeEmpty(options) {
 async function processWallet(walletAddress, options) {
   const verbose = Boolean(options.verbose);
   const dryRun  = Boolean(options.dryRun);
+  const autoYes = Boolean(options.yes);
 
   printHeader(`Wallet: ${walletAddress}`);
 
-  // ── Step 1: Scan ─────────────────────────────────────────────────────────
+  // ── Step 1: Scan ──────────────────────────────────────────────────────────
   const scanSpinner = createSpinner('Scanning for empty token accounts...');
   scanSpinner.start();
 
@@ -94,35 +114,37 @@ async function processWallet(walletAddress, options) {
     return;
   }
 
-  // Always show the scan summary — it's the key info before confirming
   printScanSummary(scanData);
 
-  // ── Step 2: Confirm with user ─────────────────────────────────────────────
-  const confirmMsg = dryRun
-    ? `Run dry-run for ${scanData.total_empty_accounts} account(s)?`
-    : `Close ${scanData.total_empty_accounts} account(s) and reclaim SOL?`;
+  // ── Step 2: Confirm ───────────────────────────────────────────────────────
+  if (autoYes) {
+    const action = dryRun ? 'Dry-run' : 'Closing';
+    printInfo(`${action} ${scanData.total_empty_accounts} account(s) — auto-confirmed via --yes.`);
+  } else {
+    const confirmMsg = dryRun
+      ? `Run dry-run for ${scanData.total_empty_accounts} account(s)?`
+      : `Close ${scanData.total_empty_accounts} account(s) and reclaim SOL?`;
 
-  let confirmAnswer;
-  try {
-    confirmAnswer = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'confirm',
-        message: confirmMsg,
-        default: false,
-      },
-    ]);
-  } catch (err) {
-    if (isExitPrompt(err)) { console.log('\nAborted.'); process.exit(0); }
-    throw err;
-  }
+    let confirmAnswer;
+    try {
+      confirmAnswer = await inquirer.prompt([
+        { type: 'confirm', name: 'confirm', message: confirmMsg, default: false },
+      ]);
+    } catch (err) {
+      if (isExitPrompt(err)) { console.log('\nAborted.'); process.exit(0); }
+      throw err;
+    }
 
-  if (!confirmAnswer.confirm) {
-    printWarning('Aborted by user.');
-    return;
+    if (!confirmAnswer.confirm) {
+      printWarning('Aborted by user.');
+      return;
+    }
   }
 
   // ── Step 3: Unlock wallet ─────────────────────────────────────────────────
+  // loadWallet() handles encrypted vs unencrypted transparently:
+  //   encrypted: false → returns Keypair immediately, no prompt
+  //   encrypted: true  → prompts for password
   let keypair;
   try {
     keypair = await loadWallet(walletAddress);
@@ -153,7 +175,6 @@ async function processWallet(walletAddress, options) {
 
   for (let batchId = 1; batchId <= totalBatches; batchId++) {
 
-    // Normal mode: one progress line per batch
     if (!verbose) {
       printProgress(`Processing batch ${batchId} of ${totalBatches}...`);
     } else {
@@ -161,7 +182,7 @@ async function processWallet(walletAddress, options) {
       printProgress(`Processing batch ${batchId} of ${totalBatches}...`);
     }
 
-    // 5a. Fetch sub-batch instructions from Lambda
+    // 5a. Fetch sub-batch instructions
     const buildSpinner = maybeSpinner(verbose, `Fetching instructions (batch ${batchId})...`);
     buildSpinner.start();
 
@@ -174,7 +195,7 @@ async function processWallet(walletAddress, options) {
       throw err;
     }
 
-    // 5b. Fetch ONE blockhash for this entire DDB batch
+    // 5b. Fetch ONE blockhash per DDB batch
     const hashSpinner = maybeSpinner(verbose, 'Fetching latest blockhash...');
     hashSpinner.start();
 
@@ -187,7 +208,7 @@ async function processWallet(walletAddress, options) {
       throw err;
     }
 
-    // 5c. Build + sign ALL sub-batch transactions at once
+    // 5c. Build + sign all sub-batches at once
     const signSpinner = maybeSpinner(verbose, `Signing ${subBatches.length} transaction(s)...`);
     signSpinner.start();
 
@@ -200,15 +221,14 @@ async function processWallet(walletAddress, options) {
       throw err;
     }
 
-    // 5d. Execute or simulate depending on dry-run flag
+    // 5d. Execute or dry-run
     if (dryRun) {
-      // Dry-run: skip executeBatch, fabricate success results from cache metadata
       const dryResults = subBatches.map(sub => ({
-        intentID:          sub.intentID,
-        txSignature:       '(dry-run)',
+        intentID:            sub.intentID,
+        txSignature:         '(dry-run)',
         batchAccountsClosed: sub.batchAccountsClosed ?? 0,
         batchRentSol:        sub.batchRentSol        ?? 0,
-        success:           true,
+        success:             true,
       }));
       allResults.push(...dryResults);
 
@@ -219,7 +239,6 @@ async function processWallet(walletAddress, options) {
       }
 
     } else {
-      // Live: send to execute Lambda
       const execSpinner = maybeSpinner(verbose, 'Submitting to Solana...');
       execSpinner.start();
 
@@ -236,8 +255,8 @@ async function processWallet(walletAddress, options) {
       allResults.push(...batchResults);
 
       if (!verbose) {
-        const ok      = batchResults.filter(r => r.success).length;
-        const failed  = batchResults.length - ok;
+        const ok     = batchResults.filter(r => r.success).length;
+        const failed = batchResults.length - ok;
         if (failed === 0) {
           printSuccess(`Batch ${batchId} of ${totalBatches} processed successfully.`);
         } else {
