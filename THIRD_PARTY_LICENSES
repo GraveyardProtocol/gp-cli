@@ -7,12 +7,6 @@ Repository: https://github.com/babel/babel
 Publisher: The Babel Team
 ----------------------------------------------
 
-Package: @graveyardprotocol/gp-cli@1.0.0
-License: MIT*
-Repository: https://github.com/GraveyardProtocol/gp-cli
-Publisher: Graveyard Protocol
-----------------------------------------------
-
 Package: @inquirer/ansi@2.0.4
 License: MIT
 Repository: https://github.com/SBoudrias/Inquirer.js

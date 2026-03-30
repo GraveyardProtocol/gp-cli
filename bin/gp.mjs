@@ -21,7 +21,7 @@ const program = new Command();
 
 program
   .name('gp')
-  .version('1.1.0')
+  .version('1.2.0')
   .usage('[command] [options]')
   .description('Graveyard Protocol CLI — close empty SPL token accounts and reclaim SOL')
   .addHelpText('after', `

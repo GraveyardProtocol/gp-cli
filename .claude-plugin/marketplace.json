@@ -1,0 +1,21 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "graveyardprotocol-gp-cli",
+  "description": "GP-CLI tools for closing empty Solana SPL token accounts and reclaim the locked rent (SOL) back to your wallet.",
+  "owner": {
+    "name": "graveyardprotocol",
+    "email": "support@graveyardprotocol.io"
+  },
+  "plugins": [
+    {
+      "name": "gp-cli-skill",
+      "description": "Close empty Solana SPL token accounts and reclaim the locked rent (SOL) back to your wallet.",
+      "version": "1.2.0",
+      "author": {
+        "name": "graveyardprotocol"
+      },
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}
