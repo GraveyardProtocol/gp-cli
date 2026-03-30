@@ -1,13 +1,19 @@
 # GP-CLI — Graveyard Protocol Command Line Interface
+ 
+A command-line tool for Humans and Skill for OpenClaw, Claude Code, and AI agents 
+to interact with Graveyard Protocol on Solana. It scans your wallets for empty SPL token accounts, closes them in
+batches, and returns the locked rent SOL to you — keeping ~80% for you and
+taking a 20% protocol fee. Ghost Points are earned per closed account and
+accumulate toward weekly SOUL token distributions.
 
-Close empty Solana SPL token accounts and reclaim the locked rent (SOL) back to your wallet.
+Private Keys live locally on disk and not transmitted anywhere at anytime, encrypted with AES-256-GCM (unencrypted in agent configuration).
 
 ---
 
 ## Requirements
 
 - **Node.js 20+**
-- A Solana wallet private key (JSON byte array or Base58 string)
+- A Solana wallet private key (JSON byte array, Base58 string, or path to a keypair file)
 
 ---
 
@@ -23,8 +29,24 @@ Or run directly from the repo:
 git clone https://github.com/GraveyardProtocol/gp-cli
 cd gp-cli
 npm install
-npm link          
+npm link
 ```
+
+### Install as an Agent Skill
+
+gp-cli is available as a discoverable skill for OpenClaw, Claude Code, and other LLM agents:
+
+```bash
+# Claude Code — add the marketplace, then install the plugin
+/plugin marketplace add graveyardprotocol/gp-cli
+/plugin install gp-cli-skill@graveyardprotocol-gp-cli
+
+# skills.sh
+npx skills add graveyardprotocol/gp-cli
+```
+
+Once installed, the agent can use gp commands directly to manage the wallets, scan and close empty token accounts, check statistics and claim rewards.
+
 
 ---
 
@@ -36,14 +58,15 @@ npm link
 gp add-wallet
 ```
 
-You will be prompted for your private key. Both formats are accepted:
+You will be prompted for your private key. All formats are accepted:
 
 | Format | Example |
 |---|---|
-| JSON byte array | `[12, 34, 56, ...]` — exported by Phantom / Solflare |
+| JSON byte array | `[66, 108, 100, 125 ...]` — exported by Phantom / Solflare |
 | Base58 string | `5Jxyz...` — some wallet exporters |
+| Keypair file path | `/path/to/id.json` or `~/.config/solana/id.json` |
 
-Your private key is **never stored in plaintext**. It is encrypted with AES-256-GCM using a password you choose, and stored in `~/.gp-cli/wallets.json`.
+Your private key is **never stored in plaintext** by default. It is encrypted with AES-256-GCM using a password you choose, and stored in `~/.gp-cli/wallets.json`.
 
 ### 2. Close empty token accounts
 
@@ -79,6 +102,285 @@ At the end of each weekly epoch, SOUL tokens are allocated based on your Ghost P
 | `gp claim-soul` | Claim SOUL tokens earned in the previous epoch |
 | `gp claim-soul --all` | Claim for all saved wallets in sequence |
 | `gp claim-soul --dry-run` | Preview claimable SOUL without submitting a transaction |
+
+---
+
+## Command Reference
+
+### `gp add-wallet`
+
+Add a Solana wallet to local storage.
+
+| Flag | Description |
+|---|---|
+| `--keypair-file <path>` | Path to a Solana keypair JSON file (e.g. `~/.config/solana/id.json`) |
+| `--private-key <value>` | Inline private key — Base58 string or JSON byte array |
+| `--name <label>` | Wallet label — skips interactive prompt |
+| `--no-pwd` | Store private key without encryption (for agent / CI use) |
+| `--json` | Output result as machine-readable JSON |
+
+**Key input (pick one):**
+- `--keypair-file <path>` — path to a Solana keypair JSON file
+- `--private-key <value>` — inline Base58 string or JSON byte array
+- *(neither flag)* — interactive password-masked prompt
+
+**Encryption:**
+- Default: prompts for a password; key is stored encrypted (🔒)
+- `--no-pwd`: key stored in plaintext — no password ever required (🔓)
+
+**`--json` output schema:**
+```json
+{ "success": true, "publicKey": "...", "encrypted": true, "name": "My Wallet" }
+{ "success": false, "error": "..." }
+```
+
+> **Note:** In `--json` mode with encryption enabled, the command will error — use `--no-pwd` for fully automated / CI pipelines.
+
+---
+
+### `gp remove-wallet`
+
+Remove a saved wallet from local storage.
+
+| Flag | Description |
+|---|---|
+| `--wallet <address>` | Public key of the wallet to remove |
+| `--json` | Output result as machine-readable JSON |
+
+**`--json` output schema:**
+```json
+{ "success": true, "publicKey": "..." }
+{ "success": false, "error": "..." }
+```
+
+---
+
+### `gp list-wallets`
+
+List all saved wallet public keys and their encryption status.
+
+| Flag | Description |
+|---|---|
+| `--json` | Output result as machine-readable JSON |
+
+**`--json` output schema:**
+```json
+{
+  "success": true,
+  "wallets": [
+    { "publicKey": "...", "name": "Main Wallet", "encrypted": true }
+  ]
+}
+```
+
+---
+
+### `gp close-empty`
+
+Scan and close empty SPL token accounts, reclaiming locked rent SOL.
+
+| Flag | Description |
+|---|---|
+| `--wallet <address>` | Target a specific saved wallet (skips interactive picker) |
+| `--all` | Process all saved wallets in sequence |
+| `-y, --yes` | Auto-confirm the "close accounts?" prompt |
+| `--dry-run` | Full pipeline but skip transaction submission |
+| `--verbose` | Show detailed sub-step output for each batch |
+| `--json` | Output result as machine-readable JSON; suppresses all human output |
+
+**Encryption handling:**
+- 🔓 Unencrypted wallets — no password prompt; fully non-interactive
+- 🔒 Encrypted wallets — password prompt appears as normal
+
+**`--json` output schema:**
+
+One JSON object is emitted per wallet (newline-delimited when using `--all`):
+
+```json
+{
+  "success": true,
+  "wallet": "...",
+  "dryRun": false,
+  "totalBatches": 3,
+  "transactionsSucceeded": 3,
+  "transactionsFailed": 0,
+  "accountsClosed": 42,
+  "solReclaimed": 0.085764,
+  "results": [
+    {
+      "intentID": "...",
+      "txSignature": "...",
+      "batchAccountsClosed": 14,
+      "batchRentSol": 0.028588,
+      "success": true
+    }
+  ]
+}
+```
+
+On error:
+```json
+{ "success": false, "wallet": "...", "error": "..." }
+```
+
+> **Note:** `--json` mode requires `--wallet <address>` or `--all`; without one of these flags the command will error (interactive wallet picker is unavailable in JSON mode).
+
+---
+
+### `gp stats`
+
+Show Ghost Point and SOL earnings for the current and previous epoch, plus lifetime stats.
+
+| Flag | Description |
+|---|---|
+| `--wallet <address>` | Look up any wallet address (no saved wallet needed) |
+| `--all` | Show a summary table for all saved wallets |
+| `-y, --yes` | Auto-write CSV to default path (`~/gp-stats-…csv`) without prompting |
+| `--csv-out <path>` | Write CSV to an explicit file path |
+| `--json` | Output result as machine-readable JSON; suppresses all human output |
+
+> **Note:** `--csv-out` and `--yes` cannot be combined with `--json`.
+
+**`--json` output schema:**
+```json
+{
+  "success": true,
+  "wallets": [
+    {
+      "walletAddress": "...",
+      "description": "...",
+      "userStats": {
+        "totalAccountsClosed": 120,
+        "totalSolsRecovered": 0.244800,
+        "totalSoulClaimed": 5.000000
+      },
+      "currentEpoch": {
+        "epochStartDate": 20260324,
+        "userGhostEarned": 4200,
+        "userGhostReferrals": 420,
+        "userGhostTotal": 4620,
+        "userAccountsClosed": 42,
+        "userSolsRecovered": 0.085764,
+        "totalUsers": 1337,
+        "totalGhostEarned": 9999999,
+        "ghostSharePct": "0.0462"
+      },
+      "previousEpoch": {
+        "epochStartDate": 20260317,
+        "userGhostEarned": 3000,
+        "userGhostReferrals": 300,
+        "userGhostTotal": 3300,
+        "userAccountsClosed": 30,
+        "userSolsRecovered": 0.061200,
+        "userSoul": 1.234567,
+        "claimState": "No",
+        "totalUsers": 1200,
+        "totalGhostEarned": 8500000,
+        "totalSoul": 10000.000000,
+        "ghostSharePct": "0.0388"
+      }
+    }
+  ]
+}
+```
+
+On error:
+```json
+{ "success": false, "error": "..." }
+```
+
+**Epoch field reference:**
+
+| Field | Description |
+|---|---|
+| `epochStartDate` | Epoch start as `YYYYMMDD` integer |
+| `userGhostEarned` | Ghost Points earned from closed accounts |
+| `userGhostReferrals` | Ghost Points earned from referrals |
+| `userGhostTotal` | Combined Ghost Points (earned + referrals) |
+| `userAccountsClosed` | Accounts closed this epoch |
+| `userSolsRecovered` | SOL reclaimed this epoch |
+| `userSoul` | SOUL tokens allocated *(previous epoch only)* |
+| `claimState` | `"Yes"` / `"No"` / `"Claiming"` *(previous epoch only)* |
+| `ghostSharePct` | Your % share of total epoch Ghost Points |
+| `totalUsers` | Network-wide participant count |
+| `totalGhostEarned` | Total Ghost Points earned across all users |
+| `totalSoul` | Total SOUL allocated *(previous epoch only)* |
+
+---
+
+### `gp claim-soul`
+
+Claim SOUL tokens earned in the previous epoch. The backend Community Wallet handles all on-chain signing — **no local keypair signing is required**.
+
+| Flag | Description |
+|---|---|
+| `--wallet <address>` | Claim for a specific wallet address |
+| `--all` | Claim for all saved wallets in sequence |
+| `--dry-run` | Preview claimable SOUL without submitting a transaction |
+| `--json` | Output result as machine-readable JSON; auto-confirms, suppresses human text |
+
+**`--json` output schema:**
+```json
+{
+  "success": true,
+  "wallets": [
+    {
+      "wallet": "...",
+      "status": "claimed",
+      "epochStartDate": 20260317,
+      "soulClaimed": 1.234567,
+      "txSignature": "..."
+    }
+  ]
+}
+```
+
+On error:
+```json
+{ "success": false, "error": "..." }
+```
+
+**`status` values:**
+
+| Status | Meaning |
+|---|---|
+| `claimed` | SOUL successfully claimed on-chain |
+| `dry_run` | Dry-run preview only — no transaction submitted |
+| `already_claimed` | SOUL was already claimed for this epoch |
+| `in_progress` | A claim transaction is currently in flight |
+| `no_soul` | No SOUL allocated for this wallet this epoch |
+| `no_epoch` | No previous epoch data found |
+| `aborted` | User declined the interactive confirm prompt |
+| `error` | Unexpected failure — see `.error` field |
+
+> **Note:** In `--json` mode, the confirmation prompt is suppressed and the claim is submitted automatically. Use `--dry-run` first to verify the amount before running live.
+
+---
+
+## Agent / CI Usage
+
+Add wallets with `--no-pwd` so no password is ever required at runtime. Combine `--wallet`, `--yes`, and `--json` for fully unattended pipelines.
+
+**Example pipeline:**
+
+```bash
+# Add a wallet non-interactively
+gp add-wallet --keypair-file ~/.config/solana/id.json --no-pwd --name "Bot Wallet" --json
+
+# Close empty accounts for one wallet, auto-confirm, JSON output
+gp close-empty --wallet <address> --yes --json
+
+# Close empty accounts for all saved wallets
+gp close-empty --all --yes --json
+
+# Fetch stats for all wallets as JSON
+gp stats --all --json
+
+# Claim SOUL for all wallets (auto-confirms in JSON mode)
+gp claim-soul --all --json
+```
+
+JSON output is **newline-delimited** when `--all` is used with `close-empty`, making it easy to stream and parse per-wallet results in real time.
 
 ---
 
@@ -151,11 +453,13 @@ Epochs run weekly, starting Monday 00:00 UTC. At the close of each epoch, SOUL t
 
 ## Security
 
-- Private keys encrypted with **AES-256-GCM**
+- Private keys encrypted with **AES-256-GCM** 
 - Key derived via **PBKDF2** (SHA-256, 100,000 iterations)
 - Stored at `~/.gp-cli/wallets.json` — never transmitted
 - GCM authentication tag prevents ciphertext tampering
-- SOUL claims require no local signing — the backend community wallet handles the transfer
+- In Agent/CI mode, the keys are store in plain JSON without any encryption.
+- Private keys are never logged or printed to stdout
+- SOUL claims require no local signing — the backend Community Wallet handles the transfer
 
 ---
 
@@ -163,11 +467,13 @@ Epochs run weekly, starting Monday 00:00 UTC. At the close of each epoch, SOUL t
 
 | Path | Contents |
 |---|---|
-| `~/.gp-cli/wallets.json` | Encrypted wallet entries |
+| `~/.gp-cli/wallets.json` | Encrypted (or unencrypted) wallet entries |
 
 ---
 
-**Note:** The source code provided in this repository is for transparency and auditing purposes only. It does not constitute an Open Source grant.
+## Disclaimer
+
+This software interacts with the Solana blockchain and can execute irreversible transactions involving real funds. You are solely responsible for your own transactions, wallet security, and any financial outcomes. The authors are not liable for any losses. Use at your own risk.
 
 ---
 
@@ -183,4 +489,8 @@ The use of this software is governed by the **Proprietary Software License Agree
 
 **Reverse Engineering:** Strictly prohibited.
 
-For third-party library attributions, please refer to the THIRD_PARTY_LICENSES file generated in the distribution.
+For third-party library attributions, please refer to the `THIRD_PARTY_LICENSES` file generated in the distribution.
+
+
+---
+**Note:** The source code provided in this repository is for transparency and auditing purposes only. It does not constitute an Open Source grant.

@@ -6,7 +6,6 @@
  * Unauthorized copying, modification, or distribution is strictly prohibited.
  */
 
-import inquirer from 'inquirer';
 import { loadWalletFile, selectWallet } from '../walletManager.mjs';
 import { getEpochData, claimSoul } from '../api.mjs';
 import {
@@ -37,6 +36,12 @@ const C = {
 };
 const c = (color, text) => `${C[color]}${text}${C.reset}`;
 
+/** Emit JSON to stdout and exit. */
+function jsonExit(payload, code = 0) {
+  process.stdout.write(JSON.stringify(payload) + '\n');
+  process.exitCode=code;
+}
+
 function formatEpochDate(yyyymmdd) {
   const s = String(yyyymmdd);
   const year  = parseInt(s.slice(0, 4), 10);
@@ -48,7 +53,6 @@ function formatEpochDate(yyyymmdd) {
   const fmt = (dt) => dt.toLocaleDateString('en-GB', {
     day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC',
   });
-  console.log(`${fmt(d)} → ${fmt(end)}`);
   return `${fmt(d)} → ${fmt(end)}`;
 }
 
@@ -74,94 +78,156 @@ function printClaimSummary(walletAddress, epoch) {
 
 // ── Claim for a single wallet ─────────────────────────────────────────────────
 
-async function claimForWallet(walletAddress, options) {
-  printHeader(`Claim SOUL: ${walletAddress}`);
-  printInfo('Fetching epoch data...');
+/**
+ * Returns a result object:
+ *   { wallet, status, soulClaimed?, txSignature?, epochStartDate? }
+ *
+ * status values:
+ *   "claimed"        — successful on-chain claim
+ *   "dry_run"        — dry-run preview only
+ *   "already_claimed"— claimState === 'Yes'
+ *   "in_progress"    — claimState === 'Claiming'
+ *   "no_soul"        — nothing to claim this epoch
+ *   "no_epoch"       — no previous epoch data
+ *   "aborted"        — user declined the interactive confirm
+ *   "error"          — unexpected failure (check .error field)
+ */
+async function claimForWallet(walletAddress, options, jsonMode = false, inquirer) {
+  if (!jsonMode) printHeader(`Claim SOUL: ${walletAddress}`);
+  if (!jsonMode) printInfo('Fetching epoch data...');
 
   let epochData;
   try {
     epochData = await getEpochData(walletAddress);
   } catch (err) {
-    throw new Error(`Failed to fetch epoch data: ${err.message}`);
+    return { wallet: walletAddress, status: 'error', error: `Failed to fetch epoch data: ${err.message}` };
   }
 
   const { previousEpoch } = epochData;
 
   // ── Guards ────────────────────────────────────────────────────────────────
   if (!previousEpoch) {
-    printWarning('No previous epoch data found for this wallet.');
-    return { skipped: true };
+    if (!jsonMode) printWarning('No previous epoch data found for this wallet.');
+    return { wallet: walletAddress, status: 'no_epoch' };
   }
 
   if (previousEpoch.claimState === 'Yes') {
-    printInfo(`Already claimed for epoch starting ${previousEpoch.epochStartDate}.`);
-    return { skipped: true };
+    if (!jsonMode) printInfo(`Already claimed for epoch starting ${previousEpoch.epochStartDate}.`);
+    return {
+      wallet:         walletAddress,
+      status:         'already_claimed',
+      epochStartDate: previousEpoch.epochStartDate,
+      soulClaimed:    Number(previousEpoch.userSoul ?? 0),
+    };
   }
 
   if (previousEpoch.claimState === 'Claiming') {
-    printWarning('A claim is already in progress for this epoch. Please wait a moment and check again.');
-    return { skipped: true };
+    if (!jsonMode) printWarning('A claim is already in progress for this epoch. Please wait a moment and check again.');
+    return { wallet: walletAddress, status: 'in_progress', epochStartDate: previousEpoch.epochStartDate };
   }
 
   const soulAmount = Number(previousEpoch.userSoul ?? 0);
   if (!soulAmount || soulAmount <= 0) {
-    printInfo('No SOUL available to claim for the previous epoch.');
-    return { skipped: true };
+    if (!jsonMode) printInfo('No SOUL available to claim for the previous epoch.');
+    return { wallet: walletAddress, status: 'no_soul', epochStartDate: previousEpoch.epochStartDate };
   }
 
-  // ── Show summary ──────────────────────────────────────────────────────────
-  printClaimSummary(walletAddress, previousEpoch);
+  // ── Show summary (human mode only) ────────────────────────────────────────
+  if (!jsonMode) printClaimSummary(walletAddress, previousEpoch);
 
   // ── Dry-run short-circuits here ───────────────────────────────────────────
   if (options.dryRun) {
-    printWarning('Dry-run mode — no claim was submitted.');
-    return { skipped: true, dryRun: true };
+    if (!jsonMode) printWarning('Dry-run mode — no claim was submitted.');
+    return {
+      wallet:         walletAddress,
+      status:         'dry_run',
+      epochStartDate: previousEpoch.epochStartDate,
+      soulClaimed:    soulAmount,
+    };
   }
 
-  // ── Confirm ───────────────────────────────────────────────────────────────
-  let confirmAnswer;
-  try {
-    confirmAnswer = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'confirm',
-        message: `Claim ${soulAmount.toFixed(6)} SOUL for this wallet?`,
-        default: false,
-      },
-    ]);
-  } catch (err) {
-    if (isExitPrompt(err)) { console.log('\nAborted.'); process.exit(0); }
-    throw err;
-  }
+  // ── Confirm (human mode only — JSON mode auto-confirms) ───────────────────
+  if (!jsonMode) {
+    let confirmAnswer;
+    try {
+      confirmAnswer = await inquirer.prompt([
+        {
+          type:    'confirm',
+          name:    'confirm',
+          message: `Claim ${soulAmount.toFixed(6)} SOUL for this wallet?`,
+          default: false,
+        },
+      ]);
+    } catch (err) {
+      if (isExitPrompt(err)) { console.log('\nAborted.'); process.exit(0); }
+      throw err;
+    }
 
-  if (!confirmAnswer.confirm) {
-    printWarning('Claim cancelled by user.');
-    return { skipped: true };
+    if (!confirmAnswer.confirm) {
+      printWarning('Claim cancelled by user.');
+      return { wallet: walletAddress, status: 'aborted', epochStartDate: previousEpoch.epochStartDate };
+    }
   }
 
   // ── Submit claim ──────────────────────────────────────────────────────────
-  printInfo('Submitting claim to Graveyard Protocol...');
+  if (!jsonMode) printInfo('Submitting claim to Graveyard Protocol...');
 
   let result;
   try {
     result = await claimSoul(walletAddress, previousEpoch.epochStartDate);
   } catch (err) {
-    throw new Error(`Claim failed: ${err.message}`);
+    return { wallet: walletAddress, status: 'error', error: `Claim failed: ${err.message}` };
   }
 
-  printSuccess(`SOUL claimed successfully!`);
-  console.log('');
-  console.log(`  ${c('bold', 'SOUL claimed')} : ${c('green', soulAmount.toFixed(6))} SOUL`);
-  console.log(`  ${c('bold', 'TX signature')} : ${c('dim', result.txSignature)}`);
-  console.log('');
+  if (!jsonMode) {
+    printSuccess(`SOUL claimed successfully!`);
+    console.log('');
+    console.log(`  ${c('bold', 'SOUL claimed')} : ${c('green', soulAmount.toFixed(6))} SOUL`);
+    console.log(`  ${c('bold', 'TX signature')} : ${c('dim', result.txSignature)}`);
+    console.log('');
+  }
 
-  return { success: true, txSignature: result.txSignature, soulClaimed: soulAmount };
+  return {
+    wallet:         walletAddress,
+    status:         'claimed',
+    epochStartDate: previousEpoch.epochStartDate,
+    soulClaimed:    soulAmount,
+    txSignature:    result.txSignature,
+  };
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 
+/**
+ * Agent-compatible flags:
+ *   --wallet <address>   claim for a specific wallet address
+ *   --all                claim for all saved wallets in sequence
+ *   --dry-run            preview claimable SOUL without submitting
+ *   --json               machine-readable JSON output; auto-confirms, suppresses human text
+ *
+ * JSON output schema:
+ *   {
+ *     "success": true,
+ *     "wallets": [
+ *       { "wallet": "…", "status": "claimed", "soulClaimed": 1.234567,
+ *         "txSignature": "…", "epochStartDate": 20260317 },
+ *       { "wallet": "…", "status": "already_claimed", "soulClaimed": 0.5, "epochStartDate": 20260317 },
+ *       { "wallet": "…", "status": "no_soul",         "epochStartDate": 20260317 },
+ *       { "wallet": "…", "status": "error",           "error": "…" }
+ *     ]
+ *   }
+ *   { "success": false, "error": "…" }
+ *
+ * status values: claimed | dry_run | already_claimed | in_progress | no_soul | no_epoch | aborted | error
+ */
 export default async function claimSoulCommand(options) {
-  printBanner();
+  let inquirer;
+  const jsonMode = Boolean(options.json);
+
+  if (!jsonMode) {
+    const mod = await import('inquirer');
+    inquirer = mod.default;
+  }
 
   try {
     const walletFile = loadWalletFile();
@@ -172,29 +238,34 @@ export default async function claimSoulCommand(options) {
         throw new Error('No wallets saved. Run `gp add-wallet` first.');
       }
 
-      printInfo(`Checking ${walletFile.wallets.length} wallet(s) for claimable SOUL...\n`);
+      if (!jsonMode) printInfo(`Checking ${walletFile.wallets.length} wallet(s) for claimable SOUL...\n`);
 
+      const walletResults = [];
       let totalClaimed = 0;
       let claimedCount = 0;
       let skippedCount = 0;
 
       for (const w of walletFile.wallets) {
-        try {
-          const outcome = await claimForWallet(w.publicKey, options);
-          if (outcome.success) {
-            totalClaimed += outcome.soulClaimed ?? 0;
-            claimedCount++;
-          } else {
-            skippedCount++;
-          }
-        } catch (err) {
-          // Don't abort the whole run — log and continue
-          printError(`${w.publicKey.slice(0, 8)}…: ${err.message}`);
+        const outcome = await claimForWallet(w.publicKey, options, jsonMode, inquirer);
+        walletResults.push(outcome);
+
+        if (outcome.status === 'claimed') {
+          totalClaimed += outcome.soulClaimed ?? 0;
+          claimedCount++;
+        } else if (outcome.status === 'error') {
+          if (!jsonMode) printError(`${w.publicKey.slice(0, 8)}…: ${outcome.error}`);
+          skippedCount++;
+        } else {
           skippedCount++;
         }
       }
 
-      // Summary across all wallets
+      if (jsonMode) {
+        jsonExit({ success: true, wallets: walletResults });
+        return;
+      }
+
+      // Human summary
       printHeader('Claim Summary');
       console.log(`  Wallets with successful claims : ${c('green',  claimedCount)}`);
       console.log(`  Wallets skipped / no SOUL      : ${c('grey',   skippedCount)}`);
@@ -211,12 +282,22 @@ export default async function claimSoulCommand(options) {
     if (options.wallet) {
       walletAddress = options.wallet;
     } else {
-      walletAddress = await selectWallet(walletFile);
+      if (jsonMode) {
+        jsonExit({ success: false, error: 'JSON mode requires --wallet <address> or --all' }, 1);
+        return;
+      }
+      walletAddress = await selectWallet(walletFile, inquirer);
     }
 
-    await claimForWallet(walletAddress, options);
+    const outcome = await claimForWallet(walletAddress, options, jsonMode, inquirer);
+
+    if (jsonMode) {
+      jsonExit({ success: true, wallets: [outcome] });
+      return;
+    }
 
   } catch (err) {
+    if (jsonMode) jsonExit({ success: false, error: err.message }, 1);
     printError(err.message);
     process.exit(1);
   }
