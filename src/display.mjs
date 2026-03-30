@@ -258,7 +258,7 @@ export function printEpochStatsBlock(label, epoch) {
 
 // ── Statistics Summary table (--all mode) ────────────────────────────────────────────────
 export function printStatsSummaryTable(rows) {
-  // rows: [{ walletAddress, description, userStats, currentEpoch, previousEpoch }]
+  // rows: [{ walletAddress, name, userStats, currentEpoch, previousEpoch }]
   const divider = c('grey', '─'.repeat(115));
   const hdr = (s) => c('bold', s);
 
@@ -270,7 +270,7 @@ export function printStatsSummaryTable(rows) {
   console.log(
     '  ' +
     hdr(padR('Wallet',          14)) + '  ' +
-    hdr(padR('Description',     16)) + '  ' +
+    hdr(padR('Name',            16)) + '  ' +
     hdr(padL('Closed(life)',    14)) + '  ' +
     hdr(padL('SOL(life)',       10)) + '  ' +
     hdr(padL('SOUL(life)',      11)) + '  ' +
@@ -285,7 +285,7 @@ export function printStatsSummaryTable(rows) {
     const curUserGhost = (Number(row.currentEpoch?.userGhostEarned??0)+ Number(row.currentEpoch?.userGhostReferrals??0));
 
     const shortWallet = row.walletAddress.slice(0, 6) + '…' + row.walletAddress.slice(-6);
-    const desc        = (row.description || '—').slice(0, 18);
+    const name        = (row.name || '—').slice(0, 18);
     const closed      = (row.userStats?.totalAccountsClosed ?? 0).toLocaleString();
     const sol         = (row.userStats?.totalSolsRecovered  ?? 0).toFixed(4);
     const soul        = (row.userStats?.totalSoulClaimed    ?? 0).toFixed(4);
@@ -296,7 +296,7 @@ export function printStatsSummaryTable(rows) {
     console.log(
       '  ' +
       c('dim',    padR(shortWallet, 14)) + '  ' +
-      c('white',  padR(desc,        16)) + '  ' +
+      c('white',  padR(name,        16)) + '  ' +
       c('yellow', padL(closed,      14)) + '  ' +
       c('yellow',  padL(sol,        10)) + '  ' +
       c('yellow',   padL(soul,      11)) + '  ' +

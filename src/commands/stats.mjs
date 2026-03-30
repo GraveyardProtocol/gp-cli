@@ -9,7 +9,6 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import inquirer from 'inquirer';
 import { loadWalletFile, selectWallet } from '../walletManager.mjs';
 import { getEpochData, getUserStats } from '../api.mjs';
 import {
@@ -32,13 +31,19 @@ function isExitPrompt(err) {
 const C = { reset: '\x1b[0m', green: '\x1b[32m', cyan: '\x1b[36m' };
 const c = (color, text) => `${C[color]}${text}${C.reset}`;
 
+/** Emit JSON to stdout and exit. */
+function jsonExit(payload, code = 0) {
+  process.stdout.write(JSON.stringify(payload) + '\n');
+  process.exitCode = code;
+}
+
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
 function formatEpochDate(yyyymmdd) {
-  const s     = String(yyyymmdd);
-  const year  = parseInt(s.slice(0, 4), 10);
+  const s = String(yyyymmdd);
+  const year = parseInt(s.slice(0, 4), 10);
   const month = parseInt(s.slice(4, 6), 10) - 1;
-  const day   = parseInt(s.slice(6, 8), 10);
+  const day = parseInt(s.slice(6, 8), 10);
   return new Date(Date.UTC(year, month, day)).toLocaleDateString('en-GB', {
     day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC',
   });
@@ -58,29 +63,29 @@ function buildCsvRows(rows) {
   ];
 
   const dataRows = rows.map((row) => {
-    const cur  = row.currentEpoch;
+    const cur = row.currentEpoch;
     const prev = row.previousEpoch;
-    const curGhost  = Number(cur?.userGhostEarned  ?? 0) + Number(cur?.userGhostReferrals  ?? 0);
+    const curGhost = Number(cur?.userGhostEarned ?? 0) + Number(cur?.userGhostReferrals ?? 0);
     const prevGhost = Number(prev?.userGhostEarned ?? 0) + Number(prev?.userGhostReferrals ?? 0);
-    const curShare  = cur?.totalGhostEarned  > 0 ? ((curGhost  / cur.totalGhostEarned)  * 100).toFixed(2) : '0.00';
+    const curShare = cur?.totalGhostEarned > 0 ? ((curGhost / cur.totalGhostEarned) * 100).toFixed(2) : '0.00';
     const prevShare = prev?.totalGhostEarned > 0 ? ((prevGhost / prev.totalGhostEarned) * 100).toFixed(2) : '0.00';
     return [
       row.walletAddress, row.description || '',
       row.userStats?.totalAccountsClosed ?? 0,
-      row.userStats?.totalSolsRecovered  ?? 0,
-      row.userStats?.totalSoulClaimed    ?? 0,
-      cur  ? formatEpochDate(cur.epochStartDate)  : '',
-      cur  ? cur.userAccountsClosed               : 0,
-      cur  ? cur.userSolsRecovered.toFixed(6)     : 0,
-      cur  ? curGhost                             : 0,
-      cur  ? curShare                             : 0,
+      row.userStats?.totalSolsRecovered ?? 0,
+      row.userStats?.totalSoulClaimed ?? 0,
+      cur ? formatEpochDate(cur.epochStartDate) : '',
+      cur ? cur.userAccountsClosed : 0,
+      cur ? cur.userSolsRecovered.toFixed(6) : 0,
+      cur ? curGhost : 0,
+      cur ? curShare : 0,
       prev ? formatEpochDate(prev.epochStartDate) : '',
-      prev ? prev.userAccountsClosed              : 0,
-      prev ? prev.userSolsRecovered.toFixed(6)    : 0,
-      prev ? prevGhost                            : 0,
-      prev ? prevShare                            : 0,
-      prev ? prev.userSoul.toFixed(6)             : 0,
-      prev ? prev.claimState                      : '',
+      prev ? prev.userAccountsClosed : 0,
+      prev ? prev.userSolsRecovered.toFixed(6) : 0,
+      prev ? prevGhost : 0,
+      prev ? prevShare : 0,
+      prev ? prev.userSoul.toFixed(6) : 0,
+      prev ? prev.claimState : '',
     ];
   });
 
@@ -99,7 +104,9 @@ function buildCsvRows(rows) {
  *   autoYes  → write to default ~/gp-stats-…csv path, no prompt
  *   otherwise → interactive "Download CSV?" confirm prompt
  */
-async function offerCsvDownload(label, rows, { autoYes = false, csvOut = null } = {}) {
+async function offerCsvDownload(label, rows, { autoYes = false, csvOut = null, inquirer = null } = {}) {
+
+  if (!inquirer) return;
   if (csvOut) {
     fs.writeFileSync(csvOut, buildCsvRows(rows), 'utf8');
     console.log(`\n  ${c('green', '✔')} CSV saved to ${c('cyan', csvOut)}\n`);
@@ -108,7 +115,7 @@ async function offerCsvDownload(label, rows, { autoYes = false, csvOut = null } 
 
   if (autoYes) {
     const filename = `gp-stats-${label}-${new Date().toISOString().slice(0, 10)}.csv`;
-    const dest     = path.join(os.homedir(), filename);
+    const dest = path.join(os.homedir(), filename);
     fs.writeFileSync(dest, buildCsvRows(rows), 'utf8');
     console.log(`\n  ${c('green', '✔')} CSV saved to ${c('cyan', dest)}\n`);
     return;
@@ -126,7 +133,7 @@ async function offerCsvDownload(label, rows, { autoYes = false, csvOut = null } 
   if (!answer.download) return;
 
   const filename = `gp-stats-${label}-${new Date().toISOString().slice(0, 10)}.csv`;
-  const dest     = path.join(os.homedir(), filename);
+  const dest = path.join(os.homedir(), filename);
   fs.writeFileSync(dest, buildCsvRows(rows), 'utf8');
   console.log(`\n  ${c('green', '✔')} CSV saved to ${c('cyan', dest)}\n`);
 }
@@ -145,13 +152,18 @@ async function fetchWalletData(walletAddress) {
   if (epochResult.status === 'fulfilled') {
     epochData = epochResult.value;
   } else {
-    printWarning(`Epoch data unavailable: ${epochResult.reason?.message}`);
+    // Suppress human-visible warning in JSON mode — callers handle null fields
+    if (!globalThis.__gpJsonMode) {
+      printWarning(`Epoch data unavailable: ${epochResult.reason?.message}`);
+    }
   }
 
   if (userResult.status === 'fulfilled') {
     userStats = userResult.value;
   } else {
-    printWarning(`Lifetime stats unavailable: ${userResult.reason?.message}`);
+    if (!globalThis.__gpJsonMode) {
+      printWarning(`Lifetime stats unavailable: ${userResult.reason?.message}`);
+    }
   }
 
   return { userStats, ...epochData };
@@ -167,7 +179,7 @@ async function fetchAndPrintStats(walletAddress) {
     return data;
   }
   printUserStatsBlock(walletAddress, userStats);
-  printEpochStatsBlock('Current Epoch',  currentEpoch);
+  printEpochStatsBlock('Current Epoch', currentEpoch);
   printEpochStatsBlock('Previous Epoch', previousEpoch);
   console.log('');
   return data;
@@ -180,18 +192,51 @@ async function fetchAndPrintStats(walletAddress) {
  *   --all                all saved wallets summary table
  *   --yes / -y           skip "Download CSV?" prompt, write to default path
  *   --csv-out <path>     write CSV to explicit path, no prompt
+ *   --json               machine-readable JSON output; suppresses all human text
  *
- * This command never touches private keys, so no encryption branching is needed.
- *
- * Agent one-liner examples:
- *   gp stats --wallet <address> --csv-out /tmp/stats.csv
- *   gp stats --all --yes
+ * JSON output schema:
+ *   {
+ *     "success": true,
+ *     "wallets": [{
+ *       "walletAddress": "…",
+ *       "description": "…",
+ *       "userStats": { "totalAccountsClosed": 0, "totalSolsRecovered": 0, "totalSoulClaimed": 0 },
+ *       "currentEpoch": {
+ *         "epochStartDate": 20260324,
+ *         "userGhostEarned": 4200,
+ *         "userGhostReferrals": 420,
+ *         "userAccountsClosed": 42,
+ *         "userSolsRecovered": 0.085764,
+ *         "totalUsers": 1337,
+ *         "totalGhostEarned": 9999999,
+ *         "ghostSharePct": "0.0463"
+ *       },
+ *       "previousEpoch": { …same fields…, "userSoul": 1.234567, "claimState": "No" }
+ *     }]
+ *   }
+ *   { "success": false, "error": "…" }
  */
 export default async function stats(options) {
-  printBanner();
+  const jsonMode = Boolean(options.json);
+
+  if (jsonMode && (options.csvOut || options.yes)) {
+    jsonExit({
+      success: false,
+      error: '--csv-out and --yes cannot be used with --json',
+    }, 1);
+    return;
+  }
+
+  let inquirer;
+  if (!jsonMode) {
+    const mod = await import('inquirer');
+    inquirer = mod.default;
+  }
+
+  globalThis.__gpJsonMode = jsonMode;   // shared flag for fetchWalletData warnings
 
   const autoYes = Boolean(options.yes);
-  const csvOut  = options.csvOut || null;
+  const csvOut = options.csvOut || null;
 
   try {
     const walletFile = loadWalletFile();
@@ -201,14 +246,22 @@ export default async function stats(options) {
       if (!walletFile.wallets.length) {
         throw new Error('No wallets saved. Run `gp add-wallet` first.');
       }
-      printInfo(`Fetching stats for ${walletFile.wallets.length} wallet(s)...\n`);
+
+      if (!jsonMode) printInfo(`Fetching stats for ${walletFile.wallets.length} wallet(s)...\n`);
+
       const rows = [];
       for (const w of walletFile.wallets) {
         const data = await fetchWalletData(w.publicKey);
-        rows.push({ walletAddress: w.publicKey, description: w.description || '', ...data });
+        rows.push({ walletAddress: w.publicKey, name: w.name || '', ...data });
       }
+
+      if (jsonMode) {
+        jsonExit({ success: true, wallets: rows.map(normaliseRow) });
+        return;
+      }
+
       printStatsSummaryTable(rows);
-      await offerCsvDownload('All', rows, { autoYes, csvOut });
+      await offerCsvDownload('All', rows, { autoYes, csvOut, inquirer });
       return;
     }
 
@@ -217,17 +270,61 @@ export default async function stats(options) {
     if (options.wallet) {
       walletAddress = options.wallet;
     } else {
-      walletAddress = await selectWallet(walletFile);
+      if (jsonMode) {
+        jsonExit({ success: false, error: 'JSON mode requires --wallet <address> or --all' }, 1);
+        return;
+      }
+      walletAddress = await selectWallet(walletFile, inquirer);
     }
 
-    const data        = await fetchAndPrintStats(walletAddress);
-    const walletEntry = walletFile.wallets.find(w => w.publicKey === walletAddress);
-    const rows        = [{ walletAddress, description: walletEntry?.description || '', ...data }];
-    const fileLabel   = walletAddress.slice(0, 4) + '…' + walletAddress.slice(-4);
-    await offerCsvDownload(fileLabel, rows, { autoYes, csvOut });
+    let data;
+    if (jsonMode) {
+      data = await fetchWalletData(walletAddress);
+    } else {
+      data = await fetchAndPrintStats(walletAddress);
+    }
 
+    const walletEntry = walletFile.wallets.find(w => w.publicKey === walletAddress);
+
+    if (jsonMode) {
+      jsonExit({
+        success: true,
+        wallets: [normaliseRow({
+          walletAddress,
+          description: walletEntry?.description || '',
+          ...data,
+        })],
+      });
+      return;
+    }
+
+    const rows = [{ walletAddress, description: walletEntry?.description || '', ...data }];
+    const fileLabel = walletAddress.slice(0, 4) + '…' + walletAddress.slice(-4);
+    await offerCsvDownload(fileLabel, rows, { autoYes, csvOut, inquirer });
   } catch (err) {
+    if (jsonMode) jsonExit({ success: false, error: err.message }, 1);
     printError(err.message);
     process.exit(1);
   }
+}
+
+// ── JSON normaliser — adds computed ghostSharePct fields ──────────────────────
+
+function normaliseRow(row) {
+  return {
+    walletAddress: row.walletAddress,
+    description: row.description || '',
+    userStats: row.userStats ?? null,
+    currentEpoch: normaliseEpoch(row.currentEpoch),
+    previousEpoch: normaliseEpoch(row.previousEpoch),
+  };
+}
+
+function normaliseEpoch(epoch) {
+  if (!epoch) return null;
+  const userGhost = Number(epoch.userGhostEarned ?? 0) + Number(epoch.userGhostReferrals ?? 0);
+  const ghostSharePct = epoch.totalGhostEarned > 0
+    ? ((userGhost / epoch.totalGhostEarned) * 100).toFixed(4)
+    : '0.0000';
+  return { ...epoch, userGhostTotal: userGhost, ghostSharePct };
 }

@@ -6,7 +6,6 @@
  * Unauthorized copying, modification, or distribution is strictly prohibited.
  */
 
-import inquirer from 'inquirer';
 import { loadWallet, loadWalletFile, selectWallet } from '../walletManager.mjs';
 import { scanWallet, getBatchCount, processBatch, executeBatch, getLatestBlockhash } from '../api.mjs';
 import { buildAndSignAll } from '../solana.mjs';
@@ -35,6 +34,12 @@ function maybeSpinner(verbose, text) {
   return { start: () => {}, succeed: () => {}, fail: () => {} };
 }
 
+/** Emit a single JSON result line to stdout and exit with the given code. */
+function jsonExit(payload, code = 0) {
+  process.stdout.write(JSON.stringify(payload) + '\n');
+  process.exitCode=code;
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 /**
  * Agent-compatible flags:
@@ -43,20 +48,34 @@ function maybeSpinner(verbose, text) {
  *   --all                process every saved wallet in sequence
  *   --dry-run            simulate without submitting transactions
  *   --verbose            detailed sub-step output for each batch
+ *   --json               machine-readable JSON output; suppresses all human text
  *
- * Encryption is handled transparently by loadWallet():
- *   • Unencrypted wallets (--no-pwd at add-wallet time) → no password prompt,
- *     fully non-interactive end-to-end when combined with --wallet --yes.
- *   • Encrypted wallets → password prompt appears as normal.
+ * JSON output (one object emitted per wallet, then process exits 0):
+ *   {
+ *     "success": true,
+ *     "wallet": "…",
+ *     "dryRun": false,
+ *     "totalBatches": 3,
+ *     "transactionsSucceeded": 3,
+ *     "transactionsFailed": 0,
+ *     "accountsClosed": 42,
+ *     "solReclaimed": 0.085764,
+ *     "results": [{ "intentID": "…", "txSignature": "…",
+ *                   "batchAccountsClosed": 14, "batchRentSol": 0.028, "success": true }]
+ *   }
+ *   On error:
+ *   { "success": false, "wallet": "…", "error": "…" }
  *
- * Full agent one-liner (unencrypted wallet):
- *   gp close-empty --wallet <address> --yes
- *
- * Full agent one-liner (dry-run, all wallets):
- *   gp close-empty --all --dry-run --yes
+ * With --all, one JSON object per wallet is emitted (newline-delimited JSON).
  */
 export default async function closeEmpty(options) {
-  printBanner();
+  let inquirer;
+  const jsonMode = Boolean(options.json);
+
+  if (!jsonMode) {
+    const mod = await import('inquirer');
+    inquirer = mod.default;
+  }
 
   try {
     const walletFile = loadWalletFile();
@@ -67,21 +86,40 @@ export default async function closeEmpty(options) {
         throw new Error('No wallets saved. Run `gp add-wallet` first.');
       }
       walletAddresses = walletFile.wallets.map(w => w.publicKey);
-      printInfo(`Processing all ${walletAddresses.length} wallet(s).\n`);
+      if (!jsonMode) printInfo(`Processing all ${walletAddresses.length} wallet(s).\n`);
 
     } else if (options.wallet) {
       walletAddresses = [options.wallet];
 
     } else {
+      if (jsonMode) {
+        // In JSON mode without --wallet or --all, we cannot prompt — error out.
+        jsonExit({ success: false, error: 'JSON mode requires --wallet <address> or --all' }, 1);
+        return;
+      }
       const selected  = await selectWallet(walletFile);
       walletAddresses = [selected];
     }
 
+    const allWalletResults = [];
+
     for (const walletAddress of walletAddresses) {
-      await processWallet(walletAddress, options);
+      const result = await processWallet(walletAddress, options, jsonMode);
+      allWalletResults.push(result);
+
+      if (jsonMode) {
+        // Emit each wallet result as it completes (streaming NDJSON)
+        process.stdout.write(JSON.stringify(result) + '\n');
+      }
     }
 
+    if (jsonMode) return;
+
   } catch (err) {
+    if (jsonMode) {
+      jsonExit({ success: false, error: err.message }, 1);
+      return;
+    }
     printError(err.message);
     process.exit(1);
   }
@@ -89,37 +127,52 @@ export default async function closeEmpty(options) {
 
 // ── Process a single wallet ───────────────────────────────────────────────────
 
-async function processWallet(walletAddress, options) {
-  const verbose = Boolean(options.verbose);
+async function processWallet(walletAddress, options, jsonMode = false) {
+  const verbose = Boolean(options.verbose) && !jsonMode;
   const dryRun  = Boolean(options.dryRun);
   const autoYes = Boolean(options.yes);
 
-  printHeader(`Wallet: ${walletAddress}`);
+  if (!jsonMode) printHeader(`Wallet: ${walletAddress}`);
 
   // ── Step 1: Scan ──────────────────────────────────────────────────────────
-  const scanSpinner = createSpinner('Scanning for empty token accounts...');
-  scanSpinner.start();
+  let scanSpinner;
+  if (!jsonMode) {
+    scanSpinner = createSpinner('Scanning for empty token accounts...');
+    scanSpinner.start();
+  }
 
   let scanData;
   try {
     scanData = await scanWallet(walletAddress);
-    scanSpinner.succeed('Scan complete.');
+    if (!jsonMode) scanSpinner.succeed('Scan complete.');
   } catch (err) {
-    scanSpinner.fail('Scan failed.');
-    throw err;
+    if (!jsonMode) scanSpinner.fail('Scan failed.');
+    return { success: false, wallet: walletAddress, error: err.message };
   }
 
   if (scanData.total_empty_accounts === 0) {
-    printInfo('No empty token accounts found. Nothing to close.');
-    return;
+    if (!jsonMode) printInfo('No empty token accounts found. Nothing to close.');
+    return {
+      success: true,
+      wallet: walletAddress,
+      dryRun,
+      totalBatches: 0,
+      transactionsSucceeded: 0,
+      transactionsFailed: 0,
+      accountsClosed: 0,
+      solReclaimed: 0,
+      results: [],
+    };
   }
 
-  printScanSummary(scanData);
+  if (!jsonMode) printScanSummary(scanData);
 
   // ── Step 2: Confirm ───────────────────────────────────────────────────────
-  if (autoYes) {
-    const action = dryRun ? 'Dry-run' : 'Closing';
-    printInfo(`${action} ${scanData.total_empty_accounts} account(s) — auto-confirmed via --yes.`);
+  if (autoYes || jsonMode) {
+    if (!jsonMode) {
+      const action = dryRun ? 'Dry-run' : 'Closing';
+      printInfo(`${action} ${scanData.total_empty_accounts} account(s) — auto-confirmed.`);
+    }
   } else {
     const confirmMsg = dryRun
       ? `Run dry-run for ${scanData.total_empty_accounts} account(s)?`
@@ -136,38 +189,49 @@ async function processWallet(walletAddress, options) {
     }
 
     if (!confirmAnswer.confirm) {
-      printWarning('Aborted by user.');
-      return;
+      if (!jsonMode) printWarning('Aborted by user.');
+      return {
+        success: true,
+        wallet: walletAddress,
+        status: 'aborted',
+        dryRun,
+        totalBatches: 0,
+        transactionsSucceeded: 0,
+        transactionsFailed: 0,
+        accountsClosed: 0,
+        solReclaimed: 0,
+        results: [],
+      };
     }
   }
 
   // ── Step 3: Unlock wallet ─────────────────────────────────────────────────
-  // loadWallet() handles encrypted vs unencrypted transparently:
-  //   encrypted: false → returns Keypair immediately, no prompt
-  //   encrypted: true  → prompts for password
   let keypair;
   try {
     keypair = await loadWallet(walletAddress);
   } catch (err) {
-    throw new Error(`Failed to unlock wallet: ${err.message}`);
+    return { success: false, wallet: walletAddress, error: `Failed to unlock wallet: ${err.message}` };
   }
 
   // ── Step 4: Get batch count ───────────────────────────────────────────────
-  const countSpinner = createSpinner('Fetching batch count...');
-  countSpinner.start();
+  let countSpinner;
+  if (!jsonMode) {
+    countSpinner = createSpinner('Fetching batch count...');
+    countSpinner.start();
+  }
 
   let totalBatches;
   try {
     totalBatches = await getBatchCount(walletAddress);
-    countSpinner.succeed(`${totalBatches} batch(es) to process.`);
+    if (!jsonMode) countSpinner.succeed(`${totalBatches} batch(es) to process.`);
   } catch (err) {
-    countSpinner.fail('Failed to fetch batch count.');
-    throw err;
+    if (!jsonMode) countSpinner.fail('Failed to fetch batch count.');
+    return { success: false, wallet: walletAddress, error: err.message };
   }
 
   if (totalBatches === 0) {
-    printWarning('Scan cache expired. Please run the command again to rescan.');
-    return;
+    if (!jsonMode) printWarning('Scan cache expired. Please run the command again to rescan.');
+    return { success: false, wallet: walletAddress, error: 'Scan cache expired — please rescan.' };
   }
 
   // ── Step 5: Process each DDB batch ───────────────────────────────────────
@@ -175,10 +239,7 @@ async function processWallet(walletAddress, options) {
 
   for (let batchId = 1; batchId <= totalBatches; batchId++) {
 
-    if (!verbose) {
-      printProgress(`Processing batch ${batchId} of ${totalBatches}...`);
-    } else {
-      console.log('');
+    if (!jsonMode) {
       printProgress(`Processing batch ${batchId} of ${totalBatches}...`);
     }
 
@@ -192,7 +253,7 @@ async function processWallet(walletAddress, options) {
       buildSpinner.succeed(`${subBatches.length} transaction(s) built.`);
     } catch (err) {
       buildSpinner.fail(`Failed to build batch ${batchId}.`);
-      throw err;
+      return { success: false, wallet: walletAddress, error: err.message };
     }
 
     // 5b. Fetch ONE blockhash per DDB batch
@@ -205,7 +266,7 @@ async function processWallet(walletAddress, options) {
       hashSpinner.succeed('Blockhash ready.');
     } catch (err) {
       hashSpinner.fail('Failed to fetch blockhash.');
-      throw err;
+      return { success: false, wallet: walletAddress, error: err.message };
     }
 
     // 5c. Build + sign all sub-batches at once
@@ -218,7 +279,7 @@ async function processWallet(walletAddress, options) {
       signSpinner.succeed(`Signed ${signedTransactions.length} transaction(s).`);
     } catch (err) {
       signSpinner.fail('Signing failed.');
-      throw err;
+      return { success: false, wallet: walletAddress, error: err.message };
     }
 
     // 5d. Execute or dry-run
@@ -232,10 +293,12 @@ async function processWallet(walletAddress, options) {
       }));
       allResults.push(...dryResults);
 
-      if (!verbose) {
-        printSuccess(`Batch ${batchId} of ${totalBatches} — dry-run complete.`);
-      } else {
-        printSuccess(`Batch ${batchId}: dry-run — ${dryResults.length} transaction(s) would be submitted.`);
+      if (!jsonMode) {
+        if (!verbose) {
+          printSuccess(`Batch ${batchId} of ${totalBatches} — dry-run complete.`);
+        } else {
+          printSuccess(`Batch ${batchId}: dry-run — ${dryResults.length} transaction(s) would be submitted.`);
+        }
       }
 
     } else {
@@ -249,12 +312,12 @@ async function processWallet(walletAddress, options) {
         execSpinner.succeed(`Executed — ${ok}/${batchResults.length} succeeded.`);
       } catch (err) {
         execSpinner.fail('Execution failed.');
-        throw err;
+        return { success: false, wallet: walletAddress, error: err.message };
       }
 
       allResults.push(...batchResults);
 
-      if (!verbose) {
+      if (!jsonMode && !verbose) {
         const ok     = batchResults.filter(r => r.success).length;
         const failed = batchResults.length - ok;
         if (failed === 0) {
@@ -266,10 +329,28 @@ async function processWallet(walletAddress, options) {
     }
   }
 
-  // ── Step 6: Results ───────────────────────────────────────────────────────
-  printHeader(dryRun ? 'Dry-run Results' : 'Results');
-  if (verbose) {
-    allResults.forEach((r, i) => printBatchResult(r, i));
+  // ── Step 6: Human results display ────────────────────────────────────────
+  if (!jsonMode) {
+    printHeader(dryRun ? 'Dry-run Results' : 'Results');
+    if (verbose) {
+      allResults.forEach((r, i) => printBatchResult(r, i));
+    }
+    printFinalSummary(allResults, dryRun);
   }
-  printFinalSummary(allResults, dryRun);
+
+  // ── Step 7: Build structured return value ─────────────────────────────────
+  const succeeded = allResults.filter(r => r.success);
+  const failed    = allResults.filter(r => !r.success);
+
+  return {
+    success:                    true,
+    wallet:                walletAddress,
+    dryRun,
+    totalBatches,
+    transactionsSucceeded: succeeded.length,
+    transactionsFailed:    failed.length,
+    accountsClosed:        succeeded.reduce((s, r) => s + (r.batchAccountsClosed || 0), 0),
+    solReclaimed:          succeeded.reduce((s, r) => s + (r.batchRentSol        || 0), 0),
+    results:               allResults,
+  };
 }

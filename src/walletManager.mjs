@@ -10,7 +10,6 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import os from 'os';
-import inquirer from 'inquirer';
 import { Keypair } from '@solana/web3.js';
 import bs58 from 'bs58';
 
@@ -30,6 +29,15 @@ export function loadWalletFile() {
 
 function saveWalletFile(data) {
   fs.writeFileSync(STORAGE_FILE, JSON.stringify(data, null, 2), 'utf8');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// JSON output helper
+// ─────────────────────────────────────────────────────────────────────────────
+
+function jsonExit(payload, code = 0) {
+  process.stdout.write(JSON.stringify(payload) + '\n');
+  process.exitCode=code;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -63,22 +71,11 @@ function decryptPrivateKey(encryptedObj, password) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Private-key parsing
-//
-// Accepts any of:
-//   1. JSON byte-array string   "[1,2,3,…]"
-//   2. Base58 string            "5Jxyz…"
-//   3. Path to a keypair file   "/path/to/id.json"  (Solana standard format —
-//                               file must contain a JSON array of 64 numbers)
-//
-// Returns { keypair, normalizedKey } where normalizedKey is always the
-// canonical "[1,2,3,…]" JSON-array string used for storage.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function parsePrivateKey(raw) {
   const trimmed = raw.trim();
 
-  // ── Path heuristic ─────────────────────────────────────────────────────────
-  // Treat input as a file path if it starts with /, ~, ./, ../ or ends with .json
   const looksLikePath =
     trimmed.startsWith('/') ||
     trimmed.startsWith('~') ||
@@ -116,7 +113,6 @@ function parsePrivateKey(raw) {
     return { keypair, normalizedKey: JSON.stringify(bytes) };
   }
 
-  // ── JSON byte-array string ─────────────────────────────────────────────────
   if (trimmed.startsWith('[')) {
     let bytes;
     try { bytes = JSON.parse(trimmed); } catch {
@@ -132,7 +128,6 @@ function parsePrivateKey(raw) {
     return { keypair, normalizedKey: JSON.stringify(bytes) };
   }
 
-  // ── Base58 string ──────────────────────────────────────────────────────────
   try {
     const decoded = bs58.decode(trimmed);
     if (decoded.length !== 64) {
@@ -160,51 +155,24 @@ function isExitPrompt(err) {
 // ─────────────────────────────────────────────────────────────────────────────
 // addWallet
 //
-// Wallet entry schema
-// ───────────────────
-//
-//   Encrypted  (default, human-friendly):
-//   {
-//     "encrypted": true,
-//     "name": "…",
-//     "publicKey": "…",
-//     "encryptedPrivateKey": { "encrypted": "…", "iv": "…", "salt": "…", "tag": "…" }
-//   }
-//
-//   Unencrypted  (--no-pwd, agent-friendly):
-//   {
-//     "encrypted": false,
-//     "name": "…",
-//     "publicKey": "…",
-//     "privateKey": "[1,2,3,…]"
-//   }
-//
-// Key input  (resolved in priority order):
-//   1. --keypair-file <path>   path to Solana keypair JSON file
-//   2. --private-key <value>   inline Base58 string or JSON-array string
-//   3. interactive prompt      (human fallback)
-//
-// Encryption:
-//   default          → prompts for password  → encrypted: true
-//   --no-pwd     → stores key plaintext  → encrypted: false  (no password prompt)
-//
-// Agent one-liner examples:
-//   gp add-wallet --keypair-file ~/.config/solana/id.json \
-//                 --no-pwd \
-//                 --name "Bot wallet"
-//
-//   gp add-wallet --private-key "5Jxyz…" \
-//                 --no-pwd \
-//                 --name "Hot wallet"
+// JSON output schema:
+//   { "success": true,  "publicKey": "…", "encrypted": true|false, "name": "…" }
+//   { "success": false, "error": "…" }
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function addWallet(options = {}) {
+  let inquirer;
+  const jsonMode = Boolean(options.json);
+
+  if (!jsonMode) {
+    const mod = await import('inquirer');
+    inquirer = mod.default;
+  }
 
   // ── 1. Resolve raw key input ───────────────────────────────────────────────
   let privateKeyRaw;
 
   if (options.keypairFile) {
-    // Flag value is always treated as a file path — no heuristics needed
     const resolved = options.keypairFile.startsWith('~')
       ? path.join(os.homedir(), options.keypairFile.slice(1))
       : path.resolve(options.keypairFile);
@@ -214,6 +182,10 @@ export async function addWallet(options = {}) {
     privateKeyRaw = options.privateKey;
 
   } else {
+    if (jsonMode) {
+      jsonExit({ success: false, error: 'JSON mode requires --keypair-file or --private-key' }, 1);
+      return;
+    }
     let ans;
     try {
       ans = await inquirer.prompt([
@@ -236,6 +208,10 @@ export async function addWallet(options = {}) {
   try {
     ({ keypair, normalizedKey } = parsePrivateKey(privateKeyRaw));
   } catch (err) {
+    if (jsonMode) {
+      jsonExit({ success: false, error: err.message }, 1);
+      return;
+    }
     console.log(err.message);
     return;
   }
@@ -244,15 +220,23 @@ export async function addWallet(options = {}) {
   const walletFile = loadWalletFile();
 
   if (walletFile.wallets.find(w => w.publicKey === publicKey)) {
+    if (jsonMode) {
+      jsonExit({ success: false, error: `Wallet ${publicKey} is already saved.` }, 1);
+      return;
+    }
     console.log(`Wallet ${publicKey} is already saved.`);
     return;
   }
 
-  // ── 3. Resolve Name ─────────────────────────────────────────────────
+  // ── 3. Resolve Name ────────────────────────────────────────────────────────
   let name;
   if (options.name) {
     name = options.name.trim();
   } else {
+    if (jsonMode) {
+      jsonExit({ success: false, error: 'JSON mode requires --name <label>' }, 1);
+      return;
+    }
     let ans;
     try {
       ans = await inquirer.prompt([
@@ -271,19 +255,27 @@ export async function addWallet(options = {}) {
   }
 
   // ── 4. Encrypt or store plaintext ──────────────────────────────────────────
-  // const noPwd = Boolean(options.noPwd);
-  const noPwd = options.pwd === false;  // Commander sets .pwd for --no-pwd
+  const noPwd = options.pwd === false;
   let entry;
 
   if (noPwd) {
     entry = {
-      encrypted:   false,
-      name: name.trim(),
+      encrypted:  false,
+      name:       name.trim(),
       publicKey,
-      privateKey:  normalizedKey,
+      privateKey: normalizedKey,
     };
   } else {
-    // Interactive password prompt (human mode)
+    if (jsonMode) {
+      // In JSON+encrypted mode the password must come non-interactively.
+      // We cannot prompt — require --no-pwd for fully automated flows.
+      jsonExit({
+        success:    false,
+        error: 'JSON mode with encryption requires --no-pwd. ' +
+               'Pass --no-pwd to store unencrypted, or use interactive mode for encrypted wallets.',
+      }, 1);
+      return;
+    }
     let ans;
     try {
       ans = await inquirer.prompt([
@@ -306,7 +298,7 @@ export async function addWallet(options = {}) {
     }
     entry = {
       encrypted:           true,
-      name:         name.trim(),
+      name:                name.trim(),
       publicKey,
       encryptedPrivateKey: encryptPrivateKey(normalizedKey, ans.password),
     };
@@ -314,6 +306,11 @@ export async function addWallet(options = {}) {
 
   walletFile.wallets.push(entry);
   saveWalletFile(walletFile);
+
+  if (jsonMode) {
+    jsonExit({ success: true, publicKey, encrypted: entry.encrypted, name: name.trim() });
+    return;
+  }
 
   const lockLabel = noPwd ? 'unencrypted' : 'encrypted';
   console.log(`\nWallet added successfully  (${lockLabel})`);
@@ -333,12 +330,27 @@ export async function addWallet(options = {}) {
 // ─────────────────────────────────────────────────────────────────────────────
 // removeWallet
 //
-// Agent: --wallet <address> skips the interactive picker.
+// JSON output schema:
+//   { "success": true,  "publicKey": "…" }
+//   { "success": false, "error": "…" }
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function removeWallet(options = {}) {
+  let inquirer;
+  const jsonMode = Boolean(options.json);
+
+  if (!jsonMode) {
+    const mod = await import('inquirer');
+    inquirer = mod.default;
+  }
+
   const walletFile = loadWalletFile();
+
   if (!walletFile.wallets.length) {
+    if (jsonMode) {
+      jsonExit({ success: false, error: 'No wallets found.' }, 1);
+      return;
+    }
     console.log('No wallets found.');
     return;
   }
@@ -348,6 +360,10 @@ export async function removeWallet(options = {}) {
   if (options.wallet) {
     walletAddress = options.wallet;
   } else {
+    if (jsonMode) {
+      jsonExit({ success: false, error: 'JSON mode requires --wallet <address>' }, 1);
+      return;
+    }
     let ans;
     try {
       ans = await inquirer.prompt([
@@ -356,7 +372,7 @@ export async function removeWallet(options = {}) {
           name:    'wallet',
           message: 'Select wallet to remove:',
           choices: walletFile.wallets.map(w => ({
-            name:  `${w.encrypted === false ? '🔓' : '🔒'} ${w.name || 'No Name'}  (${w.publicKey})`,
+            name:  `${w.name || 'No Name'}  (${w.publicKey})`,
             value: w.publicKey,
           })),
         },
@@ -369,26 +385,68 @@ export async function removeWallet(options = {}) {
   }
 
   if (!walletFile.wallets.find(w => w.publicKey === walletAddress)) {
+    if (jsonMode) {
+      jsonExit({ success: false, error: `Wallet ${walletAddress} not found in local storage.` }, 1);
+      return;
+    }
     console.log(`Wallet ${walletAddress} not found in local storage.`);
     return;
   }
 
   walletFile.wallets = walletFile.wallets.filter(w => w.publicKey !== walletAddress);
   saveWalletFile(walletFile);
+
+  if (jsonMode) {
+    jsonExit({ success: true, publicKey: walletAddress });
+    return;
+  }
   console.log(`Wallet ${walletAddress} removed successfully.`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// loadWallet
+// listWallets
 //
-// Branches on entry.encrypted:
-//
-//   false  → returns Keypair immediately — no prompt, no password.
-//            This makes unencrypted wallets fully agent-transparent; callers
-//            (close-empty, etc.) do not need to know about encryption at all.
-//
-//   true   → prompts interactively for password → AES-256-GCM decrypt → Keypair
-//   (or legacy entries without the field — treated as encrypted)
+// JSON output schema:
+//   {
+//     "success": true,
+//     "wallets": [
+//       { "publicKey": "…", "name": "…", "encrypted": true }
+//     ]
+//   }
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function listWallets(options = {}) {
+  const jsonMode = Boolean(options?.json);
+  const walletFile = loadWalletFile();
+
+  if (jsonMode) {
+    jsonExit({
+      success: true,
+      wallets: walletFile.wallets.map(w => ({
+        publicKey: w.publicKey,
+        name:      w.name || '',
+        encrypted: w.encrypted !== false,
+      })),
+    });
+    return;
+  }
+
+  if (!walletFile.wallets.length) {
+    console.log('No wallets stored.');
+    return;
+  }
+  console.log('\nStored wallets:');
+  console.log('─'.repeat(56));
+  walletFile.wallets.forEach((w, i) => {
+    console.log(`  ${i + 1}. ${w.name || 'No Name'}`);
+    console.log(`     ${w.publicKey}`);
+  });
+  console.log('─'.repeat(56));
+  console.log('');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// loadWallet — unchanged (internal, not a CLI command)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function loadWallet(publicKey) {
@@ -396,7 +454,6 @@ export async function loadWallet(publicKey) {
   const entry      = walletFile.wallets.find(w => w.publicKey === publicKey);
   if (!entry) throw new Error(`Wallet not found: ${publicKey}`);
 
-  // ── Unencrypted ────────────────────────────────────────────────────────────
   if (entry.encrypted === false) {
     try {
       return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(entry.privateKey)));
@@ -405,7 +462,6 @@ export async function loadWallet(publicKey) {
     }
   }
 
-  // ── Encrypted  (entry.encrypted === true  or  legacy entry without field) ──
   let ans;
   try {
     ans = await inquirer.prompt([
@@ -430,32 +486,10 @@ export async function loadWallet(publicKey) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// listWallets — shows 🔒/🔓 alongside each entry
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function listWallets() {
-  const walletFile = loadWalletFile();
-  if (!walletFile.wallets.length) {
-    console.log('No wallets stored.');
-    return;
-  }
-  console.log('\nStored wallets:');
-  console.log('─'.repeat(56));
-  walletFile.wallets.forEach((w, i) => {
-    // const lock = w.encrypted === false ? '🔓 unencrypted' : '🔒 encrypted  ';
-    // console.log(`  ${i + 1}. [${lock}]  ${w.name || 'No Name'}`);
-    console.log(`  ${i + 1}. ${w.name || 'No Name'}`);
-    console.log(`     ${w.publicKey}`);
-  });
-  console.log('─'.repeat(56));
-  console.log('');
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // selectWallet — interactive picker used by close-empty / stats
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function selectWallet(walletFile) {
+export async function selectWallet(walletFile, inquirer) {
   if (!walletFile.wallets.length) {
     throw new Error('No wallets saved. Run `gp add-wallet` first.');
   }
@@ -467,7 +501,7 @@ export async function selectWallet(walletFile) {
         name:    'selected',
         message: 'Select a wallet to use:',
         choices: walletFile.wallets.map(w => ({
-          name:  `${w.encrypted === false ? '🔓' : '🔒'} ${w.name || 'No Name'}  (${w.publicKey})`,
+          name:  `${w.name || 'No Name'}  (${w.publicKey})`,
           value: w.publicKey,
         })),
       },

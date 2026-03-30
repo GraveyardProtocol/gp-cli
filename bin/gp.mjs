@@ -27,11 +27,13 @@ program
   .addHelpText('after', `
 Agent / CI usage:
   Add wallets with --no-pwd so no password is ever required at runtime.
-  Use --wallet, --yes, --csv-out and other flags below to run fully unattended.
+  Use --wallet, --yes, --json and other flags below to run fully unattended.
 
   Example pipeline:
-    $ gp add-wallet --keypair-file ~/.config/solana/id.json --no-pwd
-    $ gp close-empty --wallet <address> --yes
+    $ gp add-wallet --keypair-file ~/.config/solana/id.json --no-pwd --json
+    $ gp close-empty --wallet <address> --yes --json
+    $ gp close-empty --all --yes --json
+    $ gp stats --wallet <address> --json
   `);
 
 // ── Wallet management ─────────────────────────────────────────────────────────
@@ -43,6 +45,7 @@ program
   .option('--private-key <value>', 'Inline private key (Base58 or JSON byte-array)')
   .option('--no-pwd',          'Store private key without encryption (agent / CI mode)')
   .option('--name <desc>',     'Wallet label — skips interactive prompt')
+  .option('--json',            'Output result as JSON (machine-readable)')
   .addHelpText('after', `
 Key input (pick one):
   --keypair-file <path>    path to a Solana keypair JSON file (id.json)
@@ -52,6 +55,10 @@ Key input (pick one):
 Encryption:
   default          prompts for password → key stored encrypted (🔒)
   --no-pwd         key stored in plaintext — no password ever  (🔓)
+
+JSON output schema:
+  { "success": true, "publicKey": "…", "encrypted": true|false, "name": "…" }
+  { "success": false, "error": "…" }
   `)
   .action((options) => addWallet(options));
 
@@ -59,12 +66,14 @@ program
   .command('remove-wallet')
   .description('Remove a saved wallet from local storage')
   .option('--wallet <address>', 'Public key of the wallet to remove')
+  .option('--json',             'Output result as JSON (machine-readable)')
   .action((options) => removeWallet(options));
 
 program
   .command('list-wallets')
   .description('List all saved wallet public keys and status (🔒/🔓)')
-  .action(listWallets);
+  .option('--json', 'Output result as JSON (machine-readable)')
+  .action((options) => listWallets(options));
 
 // ── Core command ──────────────────────────────────────────────────────────────
 
@@ -77,10 +86,26 @@ program
   .option('--send-to <address>', 'Send reclaimed SOL to this address (future)')
   .option('--dry-run',          'Full pipeline but skip execution')
   .option('--verbose',          'Show detailed sub-step output')
+  .option('--json',             'Output result as JSON — suppresses all human output')
   .addHelpText('after', `
 Encryption Handling:
   🔓 unencrypted wallets → no password prompt → fully non-interactive
   🔒 encrypted wallets   → password prompt appears as normal
+
+JSON output schema (one object per wallet):
+  {
+    "success": true,
+    "wallet": "…",
+    "dryRun": false,
+    "totalBatches": 3,
+    "transactionsSucceeded": 3,
+    "transactionsFailed": 0,
+    "accountsClosed": 42,
+    "solReclaimed": 0.085764,
+    "results": [{ "intentID": "…", "txSignature": "…", "batchAccountsClosed": 14,
+                  "batchRentSol": 0.02859, "success": true }]
+  }
+  { "success": false, "wallet": "…", "error": "…" }
   `)
   .action(closeEmpty);
 
@@ -93,6 +118,21 @@ program
   .option('--all',              'Show stats for all saved wallets')
   .option('-y, --yes',          'Auto-write CSV to default path')
   .option('--csv-out <path>',   'Write CSV to this explicit file path')
+  .option('--json',             'Output result as JSON — suppresses all human output')
+  .addHelpText('after', `
+JSON output schema:
+  {
+    "success": true,
+    "wallets": [{
+      "walletAddress": "…",
+      "description": "…",
+      "userStats": { "totalAccountsClosed": 0, "totalSolsRecovered": 0, "totalSoulClaimed": 0 },
+      "currentEpoch":  { … epoch fields … },
+      "previousEpoch": { … epoch fields … }
+    }]
+  }
+  { "success": false, "error": "…" }
+  `)
   .action(stats);
 
 // ── Claim SOUL command ────────────────────────────────────────────────────────
@@ -102,6 +142,20 @@ program
   .option('--all',              'Claim for all saved wallets')
   .option('--wallet <address>', 'Claim for a specific wallet address')
   .option('--dry-run',          'Preview claimable SOUL without submitting')
+  .option('--json',             'Output result as JSON — suppresses all human output')
+  .addHelpText('after', `
+JSON output schema:
+  {
+    "success": true,
+    "wallets": [{
+      "wallet": "…",
+      "status": "claimed" | "skipped" | "already_claimed" | "no_soul" | "dry_run" | "in_progress",
+      "soulClaimed": 1.234567,
+      "txSignature": "…"
+    }]
+  }
+  { "success": false, "error": "…" }
+  `)
   .action(claimSoul);
 
 // ── Execution ────────────────────────────────────────────────────────────────
