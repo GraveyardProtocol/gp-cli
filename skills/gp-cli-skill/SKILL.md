@@ -11,12 +11,13 @@ description: >-
 license: Proprietary — see LICENSE.md
 metadata:
   author: graveyardprotocol
-  version: 1.2.0
+  version: 1.2.1
   openclaw:
     requires:
       bins:
         - node
         - npx
+        - gp-cli
 ---
 
 # Graveyard Protocol CLI (gp-cli)
@@ -58,17 +59,17 @@ gp add-wallet --private-key "5Jxyz..." --name "Main" --no-pwd --json  # Base58 i
 gp add-wallet --private-key [66,108,100,125,...] --name "TradeWallet" --no-pwd --json  # JSON Byte Array
 ```
 
-By default the keypair is encrypted with a password you choose (AES-256-GCM,
-PBKDF2 key derivation). So you must pass `--no-pwd` to store unencrypted for fully
-automated pipelines — ensure `~/.gp-cli/wallets.json` has appropriate
-filesystem permissions.
-
 Both formats are accepted for `--private-key`:
 
 | Format | Example |
 |---|---|
 | JSON byte array | `[66, 108, 100, 125, ...]` — exported by Phantom / Solflare |
 | Base58 string | `5Jxyz...` — some wallet exporters |
+
+By default the keypair is encrypted with a password you choose (AES-256-GCM,
+PBKDF2 key derivation). The gp-cli allows to add multiple wallets and each wallet entry will have it's own encryption password. These passwords are not stored by gp-cli anywhere. If the agent can set, store and retrieve the encryption password for each wallet, to decrypt the keys during transaction signing, it is recommended to use it. Otherwise you can pass `--no-pwd` to store unencrypted keys for fully automated pipelines — ensure `~/.gp-cli/wallets.json` has appropriate
+filesystem permissions.
+
 
 ```bash
 gp list-wallets --json                      # show all saved wallets
@@ -87,16 +88,16 @@ gp close-empty --wallet <address> --dry-run --yes --json  # preview — no trans
 gp close-empty --wallet <address> --verbose -y --json  # show per-batch sub-step detail
 ```
 
-The CLI never broadcasts to Solana directly. Signing happens locally; the
+The CLI never broadcasts to Solana directly. Transaction signing happens locally; and only the
 signed transactions are handed to the Graveyard Protocol backend which
-simulates, submits, and confirms them.
+simulates, submits, and confirms them. The priavate keys are NOT TRANSMITTED.
 
 **Flow:**
 1. User adds as many wallets they want to manage.
 2. Based on the command, Backend scans the wallet(s) on-chain for empty token accounts
 3. CLI shows a scan summary (accounts found, SOL to reclaim, protocol fee, Ghost Points to earn) and asks for confirmation
 4. Backend builds instruction batches; CLI signs each batch locally
-5. Backend submits batches of signed transactions and returns results
+5. Backend submits batches of signed transactions only and returns results
 
 **Protocol economics per batch:**
 
@@ -139,8 +140,8 @@ gp claim-soul --all --json                   # claim for all saved wallets
 gp claim-soul --wallet <address> --dry-run --json  # preview amount — no tx sent
 ```
 
-**Important:** SOUL transfers are signed and submitted entirely by the
-Graveyard Protocol backend Community Wallet — no local keypair signing is
+**Important:** SOUL transfers are signed and submitted entirely in the
+Graveyard Protocol backend by Community Wallet keys — no local keypair signing is
 required. Your wallet only needs to be saved locally.
 
 Before claiming, the CLI shows:
@@ -151,9 +152,10 @@ Before claiming, the CLI shows:
 
 ## Agent / CI Usage
 
-Use `--no-pwd` when adding wallets so no password is ever required at
-runtime. Combine `--wallet`, `--yes`, and `--json` for fully unattended
-pipelines.
+When adding a wallet, by default the keypair is encrypted with a password you choose (AES-256-GCM,
+PBKDF2 key derivation). Each wallet entry will have it's own encryption password. These passwords are not stored by gp-cli anywhere. If the agent can provide, securely store and retrieve the encryption password for each wallet, to decrypt the keys during transaction signing, it is recommended to use it.
+Otherwise, use `--no-pwd` when adding wallets so no password is ever required at
+runtime. Combine `--wallet`, `--yes`, and `--json` for fully unattended agent/CI pipelines.
 
 ```bash
 # Add a wallet non-interactively
@@ -179,6 +181,8 @@ gp claim-soul --all --json
 Every command supports `--json` for machine-readable output. The default
 human-readable output uses ANSI formatting, tables, and colour — suitable
 for direct reading. Use `--json` when scripting or chaining commands.
+
+When `--json` mode is used, it is assumed to be an agent interaction and all of the interactive prompts in that command are replaced as options for that command. e.g. `close-empty` command asks user confirmation to proceed and close the scanned accounts. This confirmation promot is replaced as `--yes` option when using `--json` option.
 
 When `--all` is used with `close-empty`, one JSON object is emitted per
 wallet as it completes (newline-delimited JSON), so results can be streamed
@@ -313,13 +317,12 @@ Use `gp stats` to track your Ghost share % before the epoch closes, and
   wallet picker is suppressed. Always pass an explicit wallet address or
   `--all` flag.
 - **`--json` auto-confirms.** In JSON mode the "close accounts?" and "claim
-  SOUL?" prompts are skipped — transactions proceed automatically. Use
+  SOUL?" prompts are skipped by using `--yes` as default response— transactions proceed automatically. Use
   `--dry-run` first if you want to inspect before committing.
 - **No local signing for SOUL claims.** `gp claim-soul` does not require
-  unlocking your keypair. The backend handles signing entirely. Saved wallet
-  metadata is sufficient.
-- **Encrypted wallets prompt for a password at close time.** If running
-  `close-empty` in CI, use `--no-pwd` wallets to avoid interactive password
+  your keypair for signing. Your wallet public-key from locally saved data file wallets.json is sufficient. The SOUL tokens are transferred from Project's Community Wallet making it a transaction Signer and The backend handles signing entirely. 
+- **Encrypted wallets prompt for a password at close time.** 
+  If the agent can set, securely store and retrieve passwords, then use encryption while adding wallet. Otherwise use `--no-pwd` option when adding wallets to avoid interactive password prompt when running `close-empty` command in CI.
   prompts. If you forget an encryption password, remove and re-add the
   wallet — on-chain history and funds are unaffected.
 - **`epochStartDate` is an integer in `YYYYMMDD` format** — e.g. `20260317`
@@ -330,7 +333,7 @@ Use `gp stats` to track your Ghost share % before the epoch closes, and
 
 ## Security Model
 
-Private keys are stored as entries in `~/.gp-cli/wallets.json`. In Agent/CI mode, the keys are plain json, stored with `chmod 600` 
+Private keys are stored as entries in `~/.gp-cli/wallets.json`and by default  encrypted with a password you choose (AES-256-GCM, PBKDF2 key derivation). If the agent cannot set, store or retrieve the passwords securely, the wallets can be added with `--no-pwd` option saving the keys in plain json. The storage file is stored with `chmod 600` 
 The CLI reads them
 at transaction-signing time only. Keys are never printed to stdout or
 exposed as environment variables.
