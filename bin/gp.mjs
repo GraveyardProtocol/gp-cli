@@ -8,56 +8,63 @@
  * Unauthorized copying, modification, or distribution is strictly prohibited.
  */
 
-import { Command } from 'commander';
+import { Command }  from 'commander';
 import addWallet    from '../src/commands/addWallet.mjs';
 import removeWallet from '../src/commands/removeWallet.mjs';
 import listWallets  from '../src/commands/listWallets.mjs';
 import closeEmpty   from '../src/commands/closeEmpty.mjs';
 import stats        from '../src/commands/stats.mjs';
 import claimSoul    from '../src/commands/claimSoul.mjs';
+import init         from '../src/commands/init.mjs';
 import { printBanner } from '../src/display.mjs';
 
 const program = new Command();
 
 program
   .name('gp')
-  .version('1.2.0')
+  .version('1.2.2')
   .usage('[command] [options]')
   .description('Graveyard Protocol CLI — close empty SPL token accounts and reclaim SOL')
   .addHelpText('after', `
 Agent / CI usage:
-  Add wallets with --no-pwd so no password is ever required at runtime.
-  Use --wallet, --yes, --json and other flags below to run fully unattended.
+  Use --wallet, --all, --yes, --json and other flags below to run fully unattended.
 
   Example pipeline:
-    $ gp add-wallet --keypair-file ~/.config/solana/id.json --no-pwd --json
+    $ gp add-wallet --keypair-file ~/.config/solana/id.json --name "Bot" --json
     $ gp close-empty --wallet <address> --yes --json
     $ gp close-empty --all --yes --json
     $ gp stats --wallet <address> --json
   `);
 
+// ── Initialization ───────────────────────────────────────────────────────
+
+program
+  .command('init')
+  .description('Set the CLI encryption used to encrypt and decrypt all wallet keys')
+  .action((options) => init());
+
 // ── Wallet management ─────────────────────────────────────────────────────────
 
 program
   .command('add-wallet')
-  .description('Add a Solana wallet to local storage')
+  .description('Add a Solana wallet to local storage (CLI password must be set first)')
   .option('--keypair-file <path>', 'Path to a Solana keypair JSON file')
   .option('--private-key <value>', 'Inline private key (Base58 or JSON byte-array)')
-  .option('--no-pwd',          'Store private key without encryption (agent / CI mode)')
   .option('--name <desc>',     'Wallet label — skips interactive prompt')
   .option('--json',            'Output result as JSON (machine-readable)')
   .addHelpText('after', `
+Prerequisites:
+  gp-cli must be initialized before adding wallets.
+  Run: gp init
+
 Key input (pick one):
   --keypair-file <path>    path to a Solana keypair JSON file (id.json)
   --private-key  <value>   inline Base58 string or JSON byte-array
   (neither flag)           interactive password-masked prompt
 
-Encryption:
-  default          prompts for password → key stored encrypted (🔒)
-  --no-pwd         key stored in plaintext — no password ever  (🔓)
-
+All wallets private keys are encrypted (AES-256-GCM).
 JSON output schema:
-  { "success": true, "publicKey": "…", "encrypted": true|false, "name": "…" }
+  { "success": true, "publicKey": "…", "name": "…" }
   { "success": false, "error": "…" }
   `)
   .action((options) => addWallet(options));
@@ -71,7 +78,7 @@ program
 
 program
   .command('list-wallets')
-  .description('List all saved wallet public keys and status (🔒/🔓)')
+  .description('List all saved wallet public keys')
   .option('--json', 'Output result as JSON (machine-readable)')
   .action((options) => listWallets(options));
 
@@ -88,9 +95,6 @@ program
   .option('--verbose',          'Show detailed sub-step output')
   .option('--json',             'Output result as JSON — suppresses all human output')
   .addHelpText('after', `
-Encryption Handling:
-  🔓 unencrypted wallets → no password prompt → fully non-interactive
-  🔒 encrypted wallets   → password prompt appears as normal
 
 JSON output schema (one object per wallet):
   {

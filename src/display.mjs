@@ -155,19 +155,19 @@ export function printFinalSummary(results, dryRun = false) {
   console.log(c('bold', dryRun ? '  Dry-run Summary' : '  Summary'));
   console.log(c('grey',  '  ──────────────────────────────────────'));
   if (dryRun) {
-    console.log(`  Total Batches : ${c('cyan',   totalBatches)}`);
+    console.log(`  Total Batches                : ${c('cyan',   totalBatches)}`);
     console.log(`  Total Transactions simulated : ${c('green',   succeeded.length)}`);
-    console.log(`  Accounts closed : ${c('yellow', totalAcct)}`);
-    console.log(`  SOL reclaimed (~80%) : ${c('green', totalSol.toFixed(6))} SOL`);
+    console.log(`  Accounts closed              : ${c('yellow', totalAcct)}`);
+    console.log(`  SOL reclaimed                : ${c('green', totalSol.toFixed(6))} SOL`);
     console.log(c('yellow', '\n  ⚠  Dry-run — no transactions were submitted.'));
   } else {
-    console.log(`  Total Batches : ${c('cyan',   totalBatches)}`);
-    console.log(`  Transactions succeeded      : ${c('green',  succeeded.length)}`);
+    console.log(`  Total Batches          : ${c('cyan',   totalBatches)}`);
+    console.log(`  Transactions succeeded : ${c('green',  succeeded.length)}`);
     if (failed.length) {
-      console.log(`  Transactions failed         : ${c('red',    failed.length)}`);
+      console.log(`  Transactions failed  : ${c('red',    failed.length)}`);
     }
     console.log(`  Accounts closed        : ${c('yellow', totalAcct)}`);
-    console.log(`  SOL reclaimed (~80%)   : ${c('green',  totalSol.toFixed(6))} SOL`);
+    console.log(`  SOL reclaimed          : ${c('green',  totalSol.toFixed(6))} SOL`);
   }
   console.log('');
 }
