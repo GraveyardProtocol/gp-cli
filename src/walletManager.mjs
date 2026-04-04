@@ -12,9 +12,7 @@ import crypto from 'crypto';
 import os from 'os';
 import { Keypair } from '@solana/web3.js';
 import bs58 from 'bs58';
-
-const STORAGE_DIR  = path.join(os.homedir(), '.gp-cli');
-const STORAGE_FILE = path.join(STORAGE_DIR, 'wallets.json');
+import { STORAGE_DIR, STORAGE_FILE } from './config.mjs';
 
 if (!fs.existsSync(STORAGE_DIR)) fs.mkdirSync(STORAGE_DIR, { recursive: true });
 
@@ -27,8 +25,8 @@ export function loadWalletFile() {
   return JSON.parse(fs.readFileSync(STORAGE_FILE, 'utf8'));
 }
 
-function saveWalletFile(data) {
-  fs.writeFileSync(STORAGE_FILE, JSON.stringify(data, null, 2), 'utf8');
+export function saveWalletFile(fileName, data) {
+  fs.writeFileSync(fileName, JSON.stringify(data, null, 2), 'utf8');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -37,18 +35,18 @@ function saveWalletFile(data) {
 
 function jsonExit(payload, code = 0) {
   process.stdout.write(JSON.stringify(payload) + '\n');
-  process.exitCode=code;
+  process.exitCode = code;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Crypto helpers  (used only for encrypted wallets)
+// Crypto helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 function deriveKey(password, salt) {
   return crypto.pbkdf2Sync(password, salt, 100000, 32, 'sha256');
 }
 
-function encryptPrivateKey(normalizedKey, password) {
+export function encryptPrivateKey(normalizedKey, password) {
   const salt    = crypto.randomBytes(16);
   const iv      = crypto.randomBytes(12);
   const key     = deriveKey(password, salt);
@@ -59,7 +57,7 @@ function encryptPrivateKey(normalizedKey, password) {
   return { encrypted: enc, iv: iv.toString('hex'), salt: salt.toString('hex'), tag };
 }
 
-function decryptPrivateKey(encryptedObj, password) {
+export function decryptPrivateKey(encryptedObj, password) {
   const { encrypted, iv, salt, tag } = encryptedObj;
   const key      = deriveKey(password, Buffer.from(salt, 'hex'));
   const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'hex'));
@@ -156,13 +154,26 @@ function isExitPrompt(err) {
 // addWallet
 //
 // JSON output schema:
-//   { "success": true,  "publicKey": "…", "encrypted": true|false, "name": "…" }
+//   { "success": true,  "publicKey": "…", "name": "…" }
 //   { "success": false, "error": "…" }
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function addWallet(options = {}) {
   let inquirer;
   const jsonMode = Boolean(options.json);
+
+  // ── Enforce password requirement ──────────────────────────────────────────
+  const cliKey = process.env.GP_CLI_MASTER_KEY;
+
+  if (!cliKey) {
+    const msg = 'gp-cli is not initialized. Run `gp init` before adding wallets.';
+    if (jsonMode) {
+      jsonExit({ success: false, error: msg }, 1);
+      return;
+    }
+    console.log(`\n  ✖ ${msg}\n`);
+    return;
+  }
 
   if (!jsonMode) {
     const mod = await import('inquirer');
@@ -251,80 +262,36 @@ export async function addWallet(options = {}) {
       if (isExitPrompt(err)) { console.log('\nAborted.'); process.exit(0); }
       throw err;
     }
-    name = ans.name;
+        name = ans.name;
   }
 
-  // ── 4. Encrypt or store plaintext ──────────────────────────────────────────
-  const noPwd = options.pwd === false;
-  let entry;
-
-  if (noPwd) {
-    entry = {
-      encrypted:  false,
-      name:       name.trim(),
-      publicKey,
-      privateKey: normalizedKey,
-    };
-  } else {
+  if (walletFile.wallets.find(w => w.name === name)) {
     if (jsonMode) {
-      // In JSON+encrypted mode the password must come non-interactively.
-      // We cannot prompt — require --no-pwd for fully automated flows.
-      jsonExit({
-        success:    false,
-        error: 'JSON mode with encryption requires --no-pwd. ' +
-               'Pass --no-pwd to store unencrypted, or use interactive mode for encrypted wallets.',
-      }, 1);
+      jsonExit({ success: false, error: `Wallet ${name} is already saved.` }, 1);
       return;
     }
-    let ans;
-    try {
-      ans = await inquirer.prompt([
-        {
-          type: 'password', name: 'password',
-          message: 'Enter password to encrypt wallet:', mask: '*',
-        },
-        {
-          type: 'password', name: 'passwordConfirm',
-          message: 'Confirm password:', mask: '*',
-        },
-      ]);
-    } catch (err) {
-      if (isExitPrompt(err)) { console.log('\nAborted.'); process.exit(0); }
-      throw err;
-    }
-    if (ans.password !== ans.passwordConfirm) {
-      console.log('Passwords do not match.');
-      return;
-    }
-    entry = {
-      encrypted:           true,
-      name:                name.trim(),
-      publicKey,
-      encryptedPrivateKey: encryptPrivateKey(normalizedKey, ans.password),
-    };
-  }
-
-  walletFile.wallets.push(entry);
-  saveWalletFile(walletFile);
-
-  if (jsonMode) {
-    jsonExit({ success: true, publicKey, encrypted: entry.encrypted, name: name.trim() });
+    console.log(`Wallet name - ${name} is already used.`);
     return;
   }
 
-  const lockLabel = noPwd ? 'unencrypted' : 'encrypted';
-  console.log(`\nWallet added successfully  (${lockLabel})`);
-  console.log(`  Name : ${name.trim()}`);
-  console.log(`  Public key  : ${publicKey}`);
+  // ── 4. Encrypt using the stored CLI password ───────────────────────────────
+  const entry = {
+    name:                name.trim(),
+    publicKey,
+    encryptedPrivateKey: encryptPrivateKey(normalizedKey, cliKey),
+  };
 
-  if (!noPwd) {
-    console.log(`\nImportant: Note down your password. It is required every time you`);
-    console.log(`   run close-empty with this wallet. If you forget it, remove and re-add`);
-    console.log(`   the wallet — your funds and history are unaffected.\n`);
-  } else {
-    console.log(`\nThis wallet's private key is stored without encryption.`);
-    console.log(`Ensure ${STORAGE_FILE} has appropriate file-system permissions.\n`);
+  walletFile.wallets.push(entry);
+  saveWalletFile(STORAGE_FILE, walletFile);
+
+  if (jsonMode) {
+    jsonExit({ success: true, publicKey, name: name.trim() });
+    return;
   }
+
+  console.log(`\nWallet added successfully.`);
+  console.log(`  Name       : ${name.trim()}`);
+  console.log(`  Public key : ${publicKey}\n`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -394,7 +361,7 @@ export async function removeWallet(options = {}) {
   }
 
   walletFile.wallets = walletFile.wallets.filter(w => w.publicKey !== walletAddress);
-  saveWalletFile(walletFile);
+  saveWalletFile(STORAGE_FILE, walletFile);
 
   if (jsonMode) {
     jsonExit({ success: true, publicKey: walletAddress });
@@ -425,7 +392,6 @@ export function listWallets(options = {}) {
       wallets: walletFile.wallets.map(w => ({
         publicKey: w.publicKey,
         name:      w.name || '',
-        encrypted: w.encrypted !== false,
       })),
     });
     return;
@@ -446,7 +412,7 @@ export function listWallets(options = {}) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// loadWallet — unchanged (internal, not a CLI command)
+// loadWallet
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function loadWallet(publicKey) {
@@ -454,39 +420,24 @@ export async function loadWallet(publicKey) {
   const entry      = walletFile.wallets.find(w => w.publicKey === publicKey);
   if (!entry) throw new Error(`Wallet not found: ${publicKey}`);
 
-  if (entry.encrypted === false) {
-    try {
-      return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(entry.privateKey)));
-    } catch {
-      throw new Error('Wallet entry is corrupted — private key could not be parsed.');
-    }
-  }
-
-  let ans;
-  try {
-    ans = await inquirer.prompt([
-      {
-        type:    'password',
-        name:    'password',
-        message: `Enter password to unlock wallet "${entry.name || publicKey}":`,
-        mask:    '*',
-      },
-    ]);
-  } catch (err) {
-    if (isExitPrompt(err)) { console.log('\nAborted.'); process.exit(0); }
-    throw err;
+  const cliKey = process.env.GP_CLI_MASTER_KEY;
+  if (!cliKey) {
+    throw new Error('gp-cli is not initialized. Run `gp init` to configure it.');
   }
 
   try {
-    const decryptedKey = decryptPrivateKey(entry.encryptedPrivateKey, ans.password);
+    const decryptedKey = decryptPrivateKey(entry.encryptedPrivateKey, cliKey);
     return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(decryptedKey)));
   } catch {
-    throw new Error('Failed to decrypt wallet — incorrect password or corrupted entry.');
+    throw new Error(
+      'Failed to decrypt wallet — the wallet entry is corrupted. ' +
+      'Remove and re-add the wallet`.'
+    );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// selectWallet — interactive picker used by close-empty / stats
+// selectWallet — interactive picker
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function selectWallet(walletFile, inquirer) {
@@ -507,7 +458,7 @@ export async function selectWallet(walletFile, inquirer) {
       },
     ]);
   } catch (err) {
-    if (isExitPrompt(err)) { console.log('\nAborted.'); process.exit(0); }
+    if (err?.name === 'ExitPromptError') { console.log('\nAborted.'); process.exit(0); }
     throw err;
   }
   return result.selected;

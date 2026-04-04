@@ -97,14 +97,14 @@ export default async function closeEmpty(options) {
         jsonExit({ success: false, error: 'JSON mode requires --wallet <address> or --all' }, 1);
         return;
       }
-      const selected  = await selectWallet(walletFile);
+      const selected  = await selectWallet(walletFile, inquirer);
       walletAddresses = [selected];
     }
 
     const allWalletResults = [];
 
     for (const walletAddress of walletAddresses) {
-      const result = await processWallet(walletAddress, options, jsonMode);
+      const result = await processWallet(walletAddress, options, jsonMode, inquirer);
       allWalletResults.push(result);
 
       if (jsonMode) {
@@ -127,7 +127,7 @@ export default async function closeEmpty(options) {
 
 // ── Process a single wallet ───────────────────────────────────────────────────
 
-async function processWallet(walletAddress, options, jsonMode = false) {
+async function processWallet(walletAddress, options, jsonMode = false, inquirer) {
   const verbose = Boolean(options.verbose) && !jsonMode;
   const dryRun  = Boolean(options.dryRun);
   const autoYes = Boolean(options.yes);

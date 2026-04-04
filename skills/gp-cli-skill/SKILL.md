@@ -5,107 +5,100 @@ description: >-
   to your wallet, track Ghost Point earnings, claim SOUL tokens at the end
   of each weekly epoch, manage multiple encrypted wallets, and view
   lifetime and per-epoch stats — all from the command line. Use when the
-  user wants to reclaim SOL from empty token accounts, check how many Ghost
-  Points they've earned, claim SOUL rewards, inspect epoch standings, or
-  manage their saved Solana wallets for the Graveyard Protocol.
+  user wants to close empty SPL token accounts, reclaim rent SOL, check how many Ghost Points they've earned, claim SOUL rewards.
 license: Proprietary — see LICENSE.md
 metadata:
   author: graveyardprotocol
-  version: 1.2.0
+  version: 1.2.2
+  source_repository: https://github.com/graveyardprotocol/gp-cli
+  security:
+    private_keys_transmitted: false
+    local_transaction_signing: true
+    agent_handles_secrets: false
+    wallet_storage: local_filesystem
   openclaw:
     requires:
       bins:
         - node
         - npx
+        - gp-cli
+    secrets: []
 ---
 
 # Graveyard Protocol CLI (gp-cli)
 
+`gp-cli` is an open-source command-line tool for interacting with Graveyard Protocol on Solana. It scans your wallets for empty SPL token accounts, closes them in
+batches, and returns the locked rent SOL to your wallet. Ghost Points are earned per closed account and accumulate toward weekly SOUL token distributions.
+
+### Source Code
+
+The `gp-cli` tool is open source and its implementation can be reviewed publicly.
+
+Repository:
+https://github.com/graveyardprotocol/gp-cli
+
+The CLI builds and signs the transactions locally and only submits signed
+transactions to the Graveyard Protocol backend. Private keys are never
+transmitted over the network.
+
 > [!IMPORTANT]
-> **This SKILL defines and limits the commands any agent can execute.**
-> The gp-cli has `--json` mode for all the commands. The agent MUST NOT run interactive prompts. To achieve this, always append `--json` to your commands.
+> **This skill only instructs agents to execute the `gp-cli` command-line tool.** 
+>  The gp-cli tool has `--json` mode for all the command outputs for better machine readability. Agents can use this option for parsing results programmatically.
 
-`gp-cli` is a command-line tool for interacting with Graveyard Protocol on
-Solana. It scans your wallets for empty SPL token accounts, closes them in
-batches, and returns the locked rent SOL to you — keeping ~80% for you and
-taking a 20% protocol fee. Ghost Points are earned per closed account and
-accumulate toward weekly SOUL token distributions.
-
-Private Keys live locally on disk and not transmitted anywhere at anytime, encrypted with AES-256-GCM (unencrypted in agent configuration).
-
-## Install and Set up
+## Install and Set up requirements
 
 ```bash
 npm install -g @graveyardprotocol/gp-cli
 ```
 
-If installed globally, use the
-shorter `gp` command:
+If installed globally, agent can use the shorter `gp` command:
 
 ```bash
-gp add-wallet --keypair-file id.json --no-pwd --json
+gp add-wallet --keypair-file id.json --name "Main wallet" --json
 ```
 
 Requires Node.js >= 20.
 
-## Add a Wallet
-
-You can add as many wallets you want to manage. Wallets are stored locally in `~/.gp-cli/wallets.json`. All key formats are accepted while adding the wallets.
-
-```bash
-gp add-wallet --keypair-file ~/.config/solana/id.json --name "Main Wallet"--no-pwd --json # from keypair file
-gp add-wallet --private-key "5Jxyz..." --name "Main" --no-pwd --json  # Base58 inline
-gp add-wallet --private-key [66,108,100,125,...] --name "TradeWallet" --no-pwd --json  # JSON Byte Array
-```
-
-By default the keypair is encrypted with a password you choose (AES-256-GCM,
-PBKDF2 key derivation). So you must pass `--no-pwd` to store unencrypted for fully
-automated pipelines — ensure `~/.gp-cli/wallets.json` has appropriate
-filesystem permissions.
-
-Both formats are accepted for `--private-key`:
-
-| Format | Example |
-|---|---|
-| JSON byte array | `[66, 108, 100, 125, ...]` — exported by Phantom / Solflare |
-| Base58 string | `5Jxyz...` — some wallet exporters |
+## Add/Remove Wallets
+You can add as many wallets you want for rent reclaimation. Any wallet keypair is registered once and the CLI encrypts it with AES-256-GCM (PBKDF2 key derivation,
+100 000 iterations) and stores it locally in `~/.gp-cli/wallets.json`.  
 
 ```bash
+gp add-wallet --keypair-file ~/.config/solana/id.json --name "Main Wallet" --json 
+
 gp list-wallets --json                      # show all saved wallets
+
 gp remove-wallet --wallet <address> --json  # remove wallet
 ```
 
 ## Close Empty Token Accounts
 
-Scan a wallet for empty SPL token accounts and close them, returning locked
-rent to the wallet.
+Scan all or a specified wallet for empty SPL token accounts and close them, returning locked rent to the respective wallet(s). `-y or --yes` option provide auto confirmation to the `Close empty accounts?` interactive prompt.
 
 ```bash
 gp close-empty --wallet <address> --yes --json    # target a specific walletskip confirmation prompt
+
 gp close-empty --all -y --json                 # all saved wallets, auto-confirm
+
 gp close-empty --wallet <address> --dry-run --yes --json  # preview — no transactions sent
-gp close-empty --wallet <address> --verbose -y --json  # show per-batch sub-step detail
 ```
 
-The CLI never broadcasts to Solana directly. Signing happens locally; the
-signed transactions are handed to the Graveyard Protocol backend which
-simulates, submits, and confirms them.
-
 **Flow:**
-1. User adds as many wallets they want to manage.
-2. Based on the command, Backend scans the wallet(s) on-chain for empty token accounts
-3. CLI shows a scan summary (accounts found, SOL to reclaim, protocol fee, Ghost Points to earn) and asks for confirmation
-4. Backend builds instruction batches; CLI signs each batch locally
-5. Backend submits batches of signed transactions and returns results
+1. Operator or agent adds as many wallets for rent reclaimation during config setup.
+2. Agent runs Close-empty command. 
+3. Based on the command options, Backend scans the wallet(s) on-chain for empty token accounts
+4. CLI provides scan summary as received from backend (accounts found, SOL to reclaim, protocol fee, Ghost Points to earn) and asks for confirmation in case `-y` or `--yes` option was not used. 
+5. If confirmed, CLI builds Transaction batches based on total number of accounts; the CLI signs each batch locally and sends only the signed bytes to backend.
+6. Backend submits batches of signed transactions only and returns results to agent
 
 **Protocol economics per batch:**
 
 | Item | Value |
 |---|---|
-| Protocol fee | 20% of reclaimed rent |
-| You receive | ~80% of total locked SOL |
+| Protocol fee | 10% of reclaimed rent |
+| You receive |  90% of total locked SOL |
 | Ghost Points | 100 points per closed account |
-| Average rent per account | ~0.00204 SOL |
+
 
 ## Check Stats
 
@@ -114,8 +107,11 @@ current and previous epoch, plus lifetime totals.
 
 ```bash
 gp stats --wallet <address> --json           # specific wallet (saved or any address)
+
 gp stats --all --json                        # summary JSON for all saved wallets
+
 gp stats --wallet <address> --yes --json     # auto-write CSV without prompting
+
 gp stats --wallet <address> --csv-out ~/report.csv --json   # write CSV to path
 ```
 
@@ -135,13 +131,14 @@ Use `gp claim-soul` to claim them on-chain.
 
 ```bash
 gp claim-soul --wallet <address> --json      # specific wallet
+
 gp claim-soul --all --json                   # claim for all saved wallets
+
 gp claim-soul --wallet <address> --dry-run --json  # preview amount — no tx sent
 ```
 
-**Important:** SOUL transfers are signed and submitted entirely by the
-Graveyard Protocol backend Community Wallet — no local keypair signing is
-required. Your wallet only needs to be saved locally.
+**Important:** SOUL transfers are signed and submitted entirely in the
+Graveyard Protocol backend by Project's Community Wallet keys — no local keypair signing is required.
 
 Before claiming, the CLI shows:
 - Epoch period
@@ -151,13 +148,11 @@ Before claiming, the CLI shows:
 
 ## Agent / CI Usage
 
-Use `--no-pwd` when adding wallets so no password is ever required at
-runtime. Combine `--wallet`, `--yes`, and `--json` for fully unattended
-pipelines.
+Combine `--all`, `--wallet`, `--yes`, and `--json` command options for fully unattended agent/CI pipelines.
 
 ```bash
 # Add a wallet non-interactively
-gp add-wallet --keypair-file ~/.config/solana/id.json --no-pwd --name "Bot" --json
+gp add-wallet --keypair-file ~/.config/solana/id.json --name "Bot" --json
 
 # Close empty accounts — auto-confirm, JSON output
 gp close-empty --wallet <address> --yes --json
@@ -186,7 +181,7 @@ and parsed in real time.
 
 **`gp add-wallet --json`**
 ```json
-{ "success": true, "publicKey": "...", "encrypted": false, "name": "Bot" }
+{ "success": true, "publicKey": "...", "encrypted": true, "name": "Bot" }
 ```
 
 **`gp list-wallets --json`**
@@ -297,53 +292,48 @@ On any error:
 ## Epochs & Ghost Points
 
 Epochs run weekly, starting Monday 00:00 UTC. Ghost Points are earned at
-100 points per closed account, plus a 10% referral bonus on referred users'
-points. At epoch close, SOUL tokens are distributed proportionally based on
+100 points per closed account. At epoch close, SOUL tokens are distributed proportionally based on
 each wallet's share of total Ghost Points.
 
-Use `gp stats` to track your Ghost share % before the epoch closes, and
-`gp claim-soul` to collect SOUL in the following epoch.
+Use `gp stats` to track your Ghost share % for the current and previous epoch, and
+`gp claim-soul` to collect SOUL allocated for the previous epoch.
 
 ## Tips
 
-- **Check before closing.** Use `--dry-run` on `close-empty` first to see
-  exactly how many accounts will be closed and how much SOL you'll receive
+- **Check before closing.** Use `--dry-run` on `close-empty` first as a simulation
   before any transaction is submitted.
 - **`--json` requires `--wallet` or `--all`.** In JSON mode the interactive
   wallet picker is suppressed. Always pass an explicit wallet address or
   `--all` flag.
 - **`--json` auto-confirms.** In JSON mode the "close accounts?" and "claim
-  SOUL?" prompts are skipped — transactions proceed automatically. Use
-  `--dry-run` first if you want to inspect before committing.
-- **No local signing for SOUL claims.** `gp claim-soul` does not require
-  unlocking your keypair. The backend handles signing entirely. Saved wallet
-  metadata is sufficient.
-- **Encrypted wallets prompt for a password at close time.** If running
-  `close-empty` in CI, use `--no-pwd` wallets to avoid interactive password
-  prompts. If you forget an encryption password, remove and re-add the
-  wallet — on-chain history and funds are unaffected.
+  SOUL?" prompts can be skipped by using `--yes` as default response— transactions proceed automatically.
+- **No signing for SOUL claims.** `gp claim-soul` does not require
+  your keypair for signing. Your wallet public-key is sufficient. The SOUL tokens are transferred from Project's Community Wallet making it the transaction Signer and The backend handles signing entirely. 
+- If the encrypted wallet key cannot be decrypted for transaction signing due to any reason such as data corruption, you can remove and re-add the
+  wallets — on-chain history and funds are unaffected.
 - **`epochStartDate` is an integer in `YYYYMMDD` format** — e.g. `20260317`
   means 17 March 2026. Parse it as a string when formatting dates.
 - **`solReclaimed` is already net of the 20% protocol fee** in the
   `close-empty` JSON output. The `batchRentSol` fields in `results[]` also
   reflect the net amount returned to the wallet.
 
+## Agent Safety Guidelines
+
+Agents using this skill MUST follow these restrictions:
+
+- Do not read, modify or access `~/.gp-cli/wallets.json` directly
+- Do not request or expose private keys by any means
+- Do not pass private keys on the command line
+- Only execute documented `gp` commands
+
 ## Security Model
 
-Private keys are stored as entries in `~/.gp-cli/wallets.json`. In Agent/CI mode, the keys are plain json, stored with `chmod 600` 
-The CLI reads them
-at transaction-signing time only. Keys are never printed to stdout or
-exposed as environment variables.
+CLI stores the wallets in  `~/.gp-cli/wallets.json` (file mode `600`, readable only by the owner) which is encrypted at rest with AES-256-GCM (PBKDF2 key derivation, 100 000 iterations).
 
-An agent using this tool cannot read raw keys without explicitly
-opening `~/.gp-cli/wallets.json` which requires the
-user's approval with standard permissions settings.
+Agent does not access `~/.gp-cli/wallets.json` file directly. It instead uses add, remove and list commands for wallet operations. Agent can only provide the path to keypair json file when adding the wallet to gp-cli configuration.
 
-This model does not provide any protection against any tool, MCP server, or script
-running under the same OS user account which it can read `~/.gp-cli/wallets.json`
-directly. For agent-driven workflows, use dedicated wallets with limited
-SOL balances, and restrict filesystem access to `~/.gp-cli/` wherever
-possible.
+Transactions are build and signed locally within the CLI. Only signed transactions are submitted to the Graveyard Protocol backend. Private keys are not transmitted in any form.
+
 
 ## Troubleshooting
 
@@ -354,16 +344,11 @@ The batch count endpoint returned 0 after a successful scan. You may need to run
 **"No empty token accounts found"**
 The wallet has no empty SPL token accounts to close. Nothing to do.
 
-**"Failed to decrypt wallet — incorrect password or corrupted entry"**
-Wrong password entered, or the wallet entry is corrupted. Run
+**"Failed to decrypt wallet"**
+The wallet entry is corrupted. Run
 `gp remove-wallet` and `gp add-wallet` to re-add the wallet.
 
 **Network errors / `Non-JSON response`**
 The Graveyard Protocol API at `https://api.graveyardprotocol.io` was
 unreachable or returned an unexpected response. Check connectivity and
 retry.
-
-**`--json` mode errors out before prompting**
-JSON mode suppresses all interactive prompts. Ensure `--wallet <address>`
-or `--all` is passed, and for `add-wallet` use `--no-pwd` (encrypted wallets
-cannot be added non-interactively in JSON mode).
