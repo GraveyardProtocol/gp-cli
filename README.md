@@ -6,7 +6,7 @@ batches, and returns the locked rent SOL to you — keeping ~80% for you and
 taking a 20% protocol fee. Ghost Points are earned per closed account and
 accumulate toward weekly SOUL token distributions.
 
-Private Keys live locally on disk and not transmitted anywhere at anytime, encrypted with AES-256-GCM (unencrypted in agent configuration).
+Private keys are always encrypted with AES-256-GCM and stored locally. They are never transmitted anywhere at any time.
 
 ---
 
@@ -52,7 +52,17 @@ Once installed, the agent can use gp commands directly to manage the wallets, sc
 
 ## Quick Start
 
-### 1. Add a wallet
+### 1. Initialize the CLI
+
+Before adding any wallets, you must initialize gp-cli. This configures encryption settings to protect all wallet private keys.
+
+```bash
+gp init
+```
+
+**Attention**: Restart your terminal after running `gp init` for encryption setting to take effect.
+
+### 2. Add a wallet
 
 ```bash
 gp add-wallet
@@ -66,9 +76,9 @@ You will be prompted for your private key. All formats are accepted:
 | Base58 string | `5Jxyz...` — some wallet exporters |
 | Keypair file path | `/path/to/id.json` or `~/.config/solana/id.json` |
 
-Your private key is **never stored in plaintext** by default. It is encrypted with AES-256-GCM using a password you choose, and stored in `~/.gp-cli/wallets.json`.
+Your private key is **always stored encrypted** with AES-256-GCM, derived from encryption settings configured during `gp init`.
 
-### 2. Close empty token accounts
+### 3. Close empty token accounts
 
 ```bash
 gp close-empty
@@ -76,7 +86,7 @@ gp close-empty
 
 You will be shown a scan summary and asked to confirm before any transaction is submitted.
 
-### 3. Claim your SOUL tokens
+### 4. Claim your SOUL tokens
 
 ```bash
 gp claim-soul
@@ -90,6 +100,7 @@ At the end of each weekly epoch, SOUL tokens are allocated based on your Ghost P
 
 | Command | Description |
 |---|---|
+| `gp init` | Initialize the CLI and set the master encryption key |
 | `gp add-wallet` | Add and encrypt a Solana wallet |
 | `gp remove-wallet` | Remove a saved wallet |
 | `gp list-wallets` | Show all saved wallet public keys |
@@ -107,6 +118,16 @@ At the end of each weekly epoch, SOUL tokens are allocated based on your Ghost P
 
 ## Command Reference
 
+### `gp init`
+
+Initialize the CLI by generating and persisting encryption settings. These settings are used to encrypt and decrypt all wallet private keys stored locally.
+
+**Must be run once before adding any wallets.** Re-running `gp init` when wallets already exist will prompt for confirmation and re-encrypt all stored wallets with a newly generated settings.
+
+The settings are written to your shell configuration file (e.g. `~/.zshrc`, `~/.bashrc`) as an environment variable. **Restart your terminal** after running `gp init` before using any other commands.
+
+---
+
 ### `gp add-wallet`
 
 Add a Solana wallet to local storage.
@@ -116,25 +137,28 @@ Add a Solana wallet to local storage.
 | `--keypair-file <path>` | Path to a Solana keypair JSON file (e.g. `~/.config/solana/id.json`) |
 | `--private-key <value>` | Inline private key — Base58 string or JSON byte array |
 | `--name <label>` | Wallet label — skips interactive prompt |
-| `--no-pwd` | Store private key without encryption (for agent / CI use) |
 | `--json` | Output result as machine-readable JSON |
+
+**Prerequisites:**
+
+`gp init` must be run and your terminal restarted before adding wallets.
 
 **Key input (pick one):**
 - `--keypair-file <path>` — path to a Solana keypair JSON file
 - `--private-key <value>` — inline Base58 string or JSON byte array
 - *(neither flag)* — interactive password-masked prompt
 
-**Encryption:**
-- Default: prompts for a password; key is stored encrypted (🔒)
-- `--no-pwd`: key stored in plaintext — no password ever required (🔓)
+All wallet private keys are **always encrypted** (AES-256-GCM) using the master key set by `gp init`. 
+
+`--private-key` command option is given only for user convenience and should be avoided if possible.
 
 **`--json` output schema:**
 ```json
-{ "success": true, "publicKey": "...", "encrypted": true, "name": "My Wallet" }
+{ "success": true, "publicKey": "...", "name": "My Wallet" }
 { "success": false, "error": "..." }
 ```
 
-> **Note:** In `--json` mode with encryption enabled, the command will error — use `--no-pwd` for fully automated / CI pipelines.
+> **Note:** In `--json` mode, `--name` and one of `--keypair-file` or `--private-key` are required.
 
 ---
 
@@ -157,7 +181,7 @@ Remove a saved wallet from local storage.
 
 ### `gp list-wallets`
 
-List all saved wallet public keys and their encryption status.
+List all saved wallet public keys and their labels.
 
 | Flag | Description |
 |---|---|
@@ -168,7 +192,7 @@ List all saved wallet public keys and their encryption status.
 {
   "success": true,
   "wallets": [
-    { "publicKey": "...", "name": "Main Wallet", "encrypted": true }
+    { "publicKey": "...", "name": "Main Wallet" }
   ]
 }
 ```
@@ -187,10 +211,6 @@ Scan and close empty SPL token accounts, reclaiming locked rent SOL.
 | `--dry-run` | Full pipeline but skip transaction submission |
 | `--verbose` | Show detailed sub-step output for each batch |
 | `--json` | Output result as machine-readable JSON; suppresses all human output |
-
-**Encryption handling:**
-- 🔓 Unencrypted wallets — no password prompt; fully non-interactive
-- 🔒 Encrypted wallets — password prompt appears as normal
 
 **`--json` output schema:**
 
@@ -359,13 +379,18 @@ On error:
 
 ## Agent / CI Usage
 
-Add wallets with `--no-pwd` so no password is ever required at runtime. Combine `--wallet`, `--yes`, and `--json` for fully unattended pipelines.
+For automated pipelines, run `gp init` once during environment setup  in the agent's shell session.
+
+Combine `--wallet`, `--all`, `--yes`, and `--json` for fully unattended pipelines.
 
 **Example pipeline:**
 
 ```bash
+# Step 1: Initialize once (restart terminal / source shell config after)
+gp init
+
 # Add a wallet non-interactively
-gp add-wallet --keypair-file ~/.config/solana/id.json --no-pwd --name "Bot Wallet" --json
+gp add-wallet --keypair-file ~/.config/solana/id.json --name "Bot Wallet" --json
 
 # Close empty accounts for one wallet, auto-confirm, JSON output
 gp close-empty --wallet <address> --yes --json
@@ -453,11 +478,11 @@ Epochs run weekly, starting Monday 00:00 UTC. At the close of each epoch, SOUL t
 
 ## Security
 
-- Private keys encrypted with **AES-256-GCM** 
-- Key derived via **PBKDF2** (SHA-256, 100,000 iterations)
+- Encryption settings are generated by `gp init` and stored in your shell environment
+- Private keys are encrypted with **AES-256-GCM** (PBKDF2 key derivation,
+100 000 iterations)
 - Stored at `~/.gp-cli/wallets.json` — never transmitted
 - GCM authentication tag prevents ciphertext tampering
-- In Agent/CI mode, the keys are store in plain JSON without any encryption.
 - Private keys are never logged or printed to stdout
 - SOUL claims require no local signing — the backend Community Wallet handles the transfer
 
@@ -467,7 +492,7 @@ Epochs run weekly, starting Monday 00:00 UTC. At the close of each epoch, SOUL t
 
 | Path | Contents |
 |---|---|
-| `~/.gp-cli/wallets.json` | Encrypted (or unencrypted) wallet entries |
+| `~/.gp-cli/wallets.json` | AES-256-GCM encrypted wallet entries |
 
 ---
 
