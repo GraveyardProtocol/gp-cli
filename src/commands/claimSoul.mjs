@@ -235,7 +235,7 @@ export default async function claimSoulCommand(options) {
     // ── --all: iterate every saved wallet ────────────────────────────────
     if (options.all) {
       if (!walletFile.wallets.length) {
-        throw new Error('No wallets saved. Run `gp add-wallet` first.');
+        throw new Error('No wallets saved. Run `gpx add-wallet` first.');
       }
 
       if (!jsonMode) printInfo(`Checking ${walletFile.wallets.length} wallet(s) for claimable SOUL...\n`);

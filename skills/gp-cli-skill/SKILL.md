@@ -9,7 +9,7 @@ description: >-
 license: Proprietary — see LICENSE.md
 metadata:
   author: graveyardprotocol
-  version: 1.2.2
+  version: 1.2.3
   source_repository: https://github.com/graveyardprotocol/gp-cli
   security:
     private_keys_transmitted: false
@@ -51,10 +51,10 @@ transmitted over the network.
 npm install -g @graveyardprotocol/gp-cli
 ```
 
-If installed globally, agent can use the shorter `gp` command:
+If installed globally, agent can use the shorter `gpx` command:
 
 ```bash
-gp add-wallet --keypair-file id.json --name "Main wallet" --json
+gpx add-wallet --keypair-file id.json --name "Main wallet" --json
 ```
 
 Requires Node.js >= 20.
@@ -64,11 +64,11 @@ You can add as many wallets you want for rent reclaimation. Any wallet keypair i
 100 000 iterations) and stores it locally in `~/.gp-cli/wallets.json`.  
 
 ```bash
-gp add-wallet --keypair-file ~/.config/solana/id.json --name "Main Wallet" --json 
+gpx add-wallet --keypair-file ~/.config/solana/id.json --name "Main Wallet" --json 
 
-gp list-wallets --json                      # show all saved wallets
+gpx list-wallets --json                      # show all saved wallets
 
-gp remove-wallet --wallet <address> --json  # remove wallet
+gpx remove-wallet --wallet <address> --json  # remove wallet
 ```
 
 ## Close Empty Token Accounts
@@ -76,11 +76,11 @@ gp remove-wallet --wallet <address> --json  # remove wallet
 Scan all or a specified wallet for empty SPL token accounts and close them, returning locked rent to the respective wallet(s). `-y or --yes` option provide auto confirmation to the `Close empty accounts?` interactive prompt.
 
 ```bash
-gp close-empty --wallet <address> --yes --json    # target a specific walletskip confirmation prompt
+gpx close-empty --wallet <address> --yes --json    # target a specific walletskip confirmation prompt
 
-gp close-empty --all -y --json                 # all saved wallets, auto-confirm
+gpx close-empty --all -y --json                 # all saved wallets, auto-confirm
 
-gp close-empty --wallet <address> --dry-run --yes --json  # preview — no transactions sent
+gpx close-empty --wallet <address> --dry-run --yes --json  # preview — no transactions sent
 ```
 
 **Flow:**
@@ -95,8 +95,8 @@ gp close-empty --wallet <address> --dry-run --yes --json  # preview — no trans
 
 | Item | Value |
 |---|---|
-| Protocol fee | 10% of reclaimed rent |
-| You receive |  90% of total locked SOL |
+| Protocol fee | 5% of reclaimed rent |
+| You receive |  95% of total locked SOL |
 | Ghost Points | 100 points per closed account |
 
 
@@ -106,13 +106,13 @@ Show Ghost Point earnings, SOL reclaimed, and SOUL allocations for the
 current and previous epoch, plus lifetime totals.
 
 ```bash
-gp stats --wallet <address> --json           # specific wallet (saved or any address)
+gpx stats --wallet <address> --json           # specific wallet (saved or any address)
 
-gp stats --all --json                        # summary JSON for all saved wallets
+gpx stats --all --json                        # summary JSON for all saved wallets
 
-gp stats --wallet <address> --yes --json     # auto-write CSV without prompting
+gpx stats --wallet <address> --yes --json     # auto-write CSV without prompting
 
-gp stats --wallet <address> --csv-out ~/report.csv --json   # write CSV to path
+gpx stats --wallet <address> --csv-out ~/report.csv --json   # write CSV to path
 ```
 
 Stats output includes:
@@ -127,14 +127,14 @@ Epochs run weekly starting Monday 00:00 UTC.
 
 At the close of each weekly epoch, SOUL tokens are distributed
 proportionally based on each wallet's share of total Ghost Points earned.
-Use `gp claim-soul` to claim them on-chain.
+Use `gpx claim-soul` to claim them on-chain.
 
 ```bash
-gp claim-soul --wallet <address> --json      # specific wallet
+gpx claim-soul --wallet <address> --json      # specific wallet
 
-gp claim-soul --all --json                   # claim for all saved wallets
+gpx claim-soul --all --json                   # claim for all saved wallets
 
-gp claim-soul --wallet <address> --dry-run --json  # preview amount — no tx sent
+gpx claim-soul --wallet <address> --dry-run --json  # preview amount — no tx sent
 ```
 
 **Important:** SOUL transfers are signed and submitted entirely in the
@@ -152,21 +152,21 @@ Combine `--all`, `--wallet`, `--yes`, and `--json` command options for fully una
 
 ```bash
 # Add a wallet non-interactively
-gp add-wallet --keypair-file ~/.config/solana/id.json --name "Bot" --json
+gpx add-wallet --keypair-file ~/.config/solana/id.json --name "Bot" --json
 
 # Close empty accounts — auto-confirm, JSON output
-gp close-empty --wallet <address> --yes --json
+gpx close-empty --wallet <address> --yes --json
 
 # Close for all wallets
-gp close-empty --all --yes --json
+gpx close-empty --all --yes --json
 
 # Fetch stats as JSON
-gp stats --wallet <address> --json
-gp stats --all --json
+gpx stats --wallet <address> --json
+gpx stats --all --json
 
 # Claim SOUL (auto-confirms in JSON mode)
-gp claim-soul --wallet <address> --json
-gp claim-soul --all --json
+gpx claim-soul --wallet <address> --json
+gpx claim-soul --all --json
 ```
 
 ## Structured Output
@@ -179,12 +179,12 @@ When `--all` is used with `close-empty`, one JSON object is emitted per
 wallet as it completes (newline-delimited JSON), so results can be streamed
 and parsed in real time.
 
-**`gp add-wallet --json`**
+**`gpx add-wallet --json`**
 ```json
 { "success": true, "publicKey": "...", "encrypted": true, "name": "Bot" }
 ```
 
-**`gp list-wallets --json`**
+**`gpx list-wallets --json`**
 ```json
 {
   "success": true,
@@ -192,7 +192,7 @@ and parsed in real time.
 }
 ```
 
-**`gp close-empty --json`**
+**`gpx close-empty --json`**
 ```json
 {
   "success": true,
@@ -215,7 +215,7 @@ and parsed in real time.
 }
 ```
 
-**`gp stats --json`**
+**`gpx stats --json`**
 ```json
 {
   "success": true,
@@ -256,7 +256,7 @@ and parsed in real time.
 }
 ```
 
-**`gp claim-soul --json`**
+**`gpx claim-soul --json`**
 ```json
 {
   "success": true,
@@ -295,8 +295,8 @@ Epochs run weekly, starting Monday 00:00 UTC. Ghost Points are earned at
 100 points per closed account. At epoch close, SOUL tokens are distributed proportionally based on
 each wallet's share of total Ghost Points.
 
-Use `gp stats` to track your Ghost share % for the current and previous epoch, and
-`gp claim-soul` to collect SOUL allocated for the previous epoch.
+Use `gpx stats` to track your Ghost share % for the current and previous epoch, and
+`gpx claim-soul` to collect SOUL allocated for the previous epoch.
 
 ## Tips
 
@@ -307,7 +307,7 @@ Use `gp stats` to track your Ghost share % for the current and previous epoch, a
   `--all` flag.
 - **`--json` auto-confirms.** In JSON mode the "close accounts?" and "claim
   SOUL?" prompts can be skipped by using `--yes` as default response— transactions proceed automatically.
-- **No signing for SOUL claims.** `gp claim-soul` does not require
+- **No signing for SOUL claims.** `gpx claim-soul` does not require
   your keypair for signing. Your wallet public-key is sufficient. The SOUL tokens are transferred from Project's Community Wallet making it the transaction Signer and The backend handles signing entirely. 
 - If the encrypted wallet key cannot be decrypted for transaction signing due to any reason such as data corruption, you can remove and re-add the
   wallets — on-chain history and funds are unaffected.
@@ -317,14 +317,14 @@ Use `gp stats` to track your Ghost share % for the current and previous epoch, a
   `close-empty` JSON output. The `batchRentSol` fields in `results[]` also
   reflect the net amount returned to the wallet.
 
-## Agent Safety Guidelines
+## Agent Safety Restrictions
 
 Agents using this skill MUST follow these restrictions:
 
 - Do not read, modify or access `~/.gp-cli/wallets.json` directly
 - Do not request or expose private keys by any means
 - Do not pass private keys on the command line
-- Only execute documented `gp` commands
+- Only execute documented `gpx` commands
 
 ## Security Model
 
@@ -339,14 +339,14 @@ Transactions are build and signed locally within the CLI. Only signed transactio
 
 **"Scan cache expired — please rescan"**
 The batch count endpoint returned 0 after a successful scan. You may need to run
-`gp close-empty` again — the cache has a short TTL.
+`gpx close-empty` again — the cache has a short TTL.
 
 **"No empty token accounts found"**
 The wallet has no empty SPL token accounts to close. Nothing to do.
 
 **"Failed to decrypt wallet"**
 The wallet entry is corrupted. Run
-`gp remove-wallet` and `gp add-wallet` to re-add the wallet.
+`gpx remove-wallet` and `gpx add-wallet` to re-add the wallet.
 
 **Network errors / `Non-JSON response`**
 The Graveyard Protocol API at `https://api.graveyardprotocol.io` was

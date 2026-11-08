@@ -17,5 +17,5 @@ export const STORAGE_FILE = path.join(STORAGE_DIR, 'wallets.json');
 // ── Protocol constants - FOR INFORMATION ONLY──────────────────────────────────
 // These parameters are handled in the backend.
 // export const BASE_GHOST_POINTS    = 100;
-// export const PROTOCOL_FEE_PERCENT = 0.20;   // 20%
+// export const PROTOCOL_FEE_PERCENT = 0.05;   // 5%
 // export const REAPER_FEE_RECIPIENT = 'GRAVEbqZNUN1K7WBgvwgWUYs69M51eprZbSkeXWbQjjE';
