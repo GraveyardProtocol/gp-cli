@@ -166,7 +166,7 @@ export async function addWallet(options = {}) {
   const cliKey = process.env.GP_CLI_MASTER_KEY;
 
   if (!cliKey) {
-    const msg = 'gp-cli is not initialized. Run `gp init` before adding wallets.';
+    const msg = 'gp-cli is not initialized. Run `gpx init` before adding wallets.';
     if (jsonMode) {
       jsonExit({ success: false, error: msg }, 1);
       return;
@@ -422,7 +422,7 @@ export async function loadWallet(publicKey) {
 
   const cliKey = process.env.GP_CLI_MASTER_KEY;
   if (!cliKey) {
-    throw new Error('gp-cli is not initialized. Run `gp init` to configure it.');
+    throw new Error('gp-cli is not initialized. Run `gpx init` to configure it.');
   }
 
   try {
@@ -442,7 +442,7 @@ export async function loadWallet(publicKey) {
 
 export async function selectWallet(walletFile, inquirer) {
   if (!walletFile.wallets.length) {
-    throw new Error('No wallets saved. Run `gp add-wallet` first.');
+    throw new Error('No wallets saved. Run `gpx add-wallet` first.');
   }
   let result;
   try {

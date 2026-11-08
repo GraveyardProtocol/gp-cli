@@ -55,7 +55,7 @@ export function printBanner() {
   const lines = [
     '  ░██████╗░██████╗ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░',
     '  ██╔════╝ ██╔══██╗            Graveyard Protocol CLI                 ',
-    '  ██║░░██╗ ██████╔╝                    v1.2.2                         ',
+    '  ██║░░██╗ ██████╔╝                    v1.2.3                         ',
     '  ██║░░╚═╝ ██╔═══╝                                                    ',
     '  ╚██████╗ ██║         Close empty SPL token accounts · Reclaim SOL   ',
     '   ╚═════╝ ╚═╝     ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░',
@@ -82,7 +82,7 @@ export function printScanSummary(data) {
   console.log(c('grey',  '  ──────────────────────────────────────'));
   console.log(`  Empty accounts found   : ${c('yellow', data.total_empty_accounts)}`);
   console.log(`  Total rent locked      : ${c('white',  data.total_rent_sol.toFixed(6))} SOL`);
-  console.log(`  Protocol fee (20%)     : ${c('grey',   data.estimated_fees.toFixed(6))} SOL`);
+  console.log(`  Protocol fee           : ${c('grey',   data.estimated_fees.toFixed(6))} SOL`);
   console.log(`  ${c('bold', 'You will receive')}       : ${c('green', solNet)} SOL`);
   console.log(`  Ghost Points earned    : ${c('cyan',   data.estimated_ghost_rewards.toLocaleString())}`);
   console.log('');

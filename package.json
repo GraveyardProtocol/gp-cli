@@ -1,13 +1,14 @@
 {
   "name": "@graveyardprotocol/gp-cli",
-  "version": "1.2.2",
-  "description": "Graveyard Protocol CLI — close empty Solana SPL token accounts and reclaim locked SOL",
+  "version": "1.2.3",
+  "description": "Graveyard Protocol CLI — close empty Solana SPL token accounts and reclaim rent SOL",
   "type": "module",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "bin": {
-    "gp": "bin/gp.mjs"
+    "gpx": "bin/gp.mjs",
+    "gp-cli": "./bin/gp.mjs"
   },
   "preferGlobal": true,
   "files": [

@@ -21,19 +21,19 @@ import { printBanner } from '../src/display.mjs';
 const program = new Command();
 
 program
-  .name('gp')
-  .version('1.2.2')
+  .name('gpx')
+  .version('1.2.3')
   .usage('[command] [options]')
-  .description('Graveyard Protocol CLI — close empty SPL token accounts and reclaim SOL')
+  .description('Graveyard Protocol CLI — close empty SPL token accounts and reclaim SOL rent')
   .addHelpText('after', `
 Agent / CI usage:
   Use --wallet, --all, --yes, --json and other flags below to run fully unattended.
 
   Example pipeline:
-    $ gp add-wallet --keypair-file ~/.config/solana/id.json --name "Bot" --json
-    $ gp close-empty --wallet <address> --yes --json
-    $ gp close-empty --all --yes --json
-    $ gp stats --wallet <address> --json
+    $ gpx add-wallet --keypair-file ~/.config/solana/id.json --name "Bot" --json
+    $ gpx close-empty --wallet <address> --yes --json
+    $ gpx close-empty --all --yes --json
+    $ gpx stats --wallet <address> --json
   `);
 
 // ── Initialization ───────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ program
   .addHelpText('after', `
 Prerequisites:
   gp-cli must be initialized before adding wallets.
-  Run: gp init
+  Run: gpx init
 
 Key input (pick one):
   --keypair-file <path>    path to a Solana keypair JSON file (id.json)

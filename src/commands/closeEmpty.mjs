@@ -83,7 +83,7 @@ export default async function closeEmpty(options) {
 
     if (options.all) {
       if (!walletFile.wallets.length) {
-        throw new Error('No wallets saved. Run `gp add-wallet` first.');
+        throw new Error('No wallets saved. Run `gpx add-wallet` first.');
       }
       walletAddresses = walletFile.wallets.map(w => w.publicKey);
       if (!jsonMode) printInfo(`Processing all ${walletAddresses.length} wallet(s).\n`);

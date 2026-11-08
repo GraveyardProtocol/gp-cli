@@ -45,7 +45,7 @@ gp-cli is available as a discoverable skill for OpenClaw, Claude Code, and other
 npx skills add graveyardprotocol/gp-cli
 ```
 
-Once installed, the agent can use gp commands directly to manage the wallets, scan and close empty token accounts, check statistics and claim rewards.
+Once installed, the agent can use gpx commands directly to manage the wallets, scan and close empty token accounts, check statistics and claim rewards.
 
 
 ---
@@ -57,15 +57,15 @@ Once installed, the agent can use gp commands directly to manage the wallets, sc
 Before adding any wallets, you must initialize gp-cli. This configures encryption settings to protect all wallet private keys.
 
 ```bash
-gp init
+gpx init
 ```
 
-**Attention**: Restart your terminal after running `gp init` for encryption setting to take effect.
+**Attention**: Restart your terminal after running `gpx init` for encryption setting to take effect.
 
 ### 2. Add a wallet
 
 ```bash
-gp add-wallet
+gpx add-wallet
 ```
 
 You will be prompted for your private key. All formats are accepted:
@@ -76,12 +76,12 @@ You will be prompted for your private key. All formats are accepted:
 | Base58 string | `5Jxyz...` — some wallet exporters |
 | Keypair file path | `/path/to/id.json` or `~/.config/solana/id.json` |
 
-Your private key is **always stored encrypted** with AES-256-GCM, derived from encryption settings configured during `gp init`.
+Your private key is **always stored encrypted** with AES-256-GCM, derived from encryption settings configured during `gpx init`.
 
 ### 3. Close empty token accounts
 
 ```bash
-gp close-empty
+gpx close-empty
 ```
 
 You will be shown a scan summary and asked to confirm before any transaction is submitted.
@@ -89,7 +89,7 @@ You will be shown a scan summary and asked to confirm before any transaction is 
 ### 4. Claim your SOUL tokens
 
 ```bash
-gp claim-soul
+gpx claim-soul
 ```
 
 At the end of each weekly epoch, SOUL tokens are allocated based on your Ghost Point share. Use this command to claim them to your wallet.
@@ -100,35 +100,35 @@ At the end of each weekly epoch, SOUL tokens are allocated based on your Ghost P
 
 | Command | Description |
 |---|---|
-| `gp init` | Initialize the CLI and set the master encryption key |
-| `gp add-wallet` | Add and encrypt a Solana wallet |
-| `gp remove-wallet` | Remove a saved wallet |
-| `gp list-wallets` | Show all saved wallet public keys |
-| `gp close-empty` | Scan and close empty token accounts |
-| `gp close-empty --dry-run` | Preview what would be closed — no transactions sent |
-| `gp close-empty --all` | Process every saved wallet in sequence |
-| `gp stats` | Show Ghost Point and SOL earnings for current and previous epoch |
-| `gp stats --all` | Show stats for all saved wallets in a summary table |
-| `gp stats --wallet <address>` | Look up any wallet address directly (no saved wallet needed) |
-| `gp claim-soul` | Claim SOUL tokens earned in the previous epoch |
-| `gp claim-soul --all` | Claim for all saved wallets in sequence |
-| `gp claim-soul --dry-run` | Preview claimable SOUL without submitting a transaction |
+| `gpx init` | Initialize the CLI and set the master encryption key |
+| `gpx add-wallet` | Add and encrypt a Solana wallet |
+| `gpx remove-wallet` | Remove a saved wallet |
+| `gpx list-wallets` | Show all saved wallet public keys |
+| `gpx close-empty` | Scan and close empty token accounts |
+| `gpx close-empty --dry-run` | Preview what would be closed — no transactions sent |
+| `gpx close-empty --all` | Process every saved wallet in sequence |
+| `gpx stats` | Show Ghost Point and SOL earnings for current and previous epoch |
+| `gpx stats --all` | Show stats for all saved wallets in a summary table |
+| `gpx stats --wallet <address>` | Look up any wallet address directly (no saved wallet needed) |
+| `gpx claim-soul` | Claim SOUL tokens earned in the previous epoch |
+| `gpx claim-soul --all` | Claim for all saved wallets in sequence |
+| `gpx claim-soul --dry-run` | Preview claimable SOUL without submitting a transaction |
 
 ---
 
 ## Command Reference
 
-### `gp init`
+### `gpx init`
 
 Initialize the CLI by generating and persisting encryption settings. These settings are used to encrypt and decrypt all wallet private keys stored locally.
 
-**Must be run once before adding any wallets.** Re-running `gp init` when wallets already exist will prompt for confirmation and re-encrypt all stored wallets with a newly generated settings.
+**Must be run once before adding any wallets.** Re-running `gpx init` when wallets already exist will prompt for confirmation and re-encrypt all stored wallets with a newly generated settings.
 
-The settings are written to your shell configuration file (e.g. `~/.zshrc`, `~/.bashrc`) as an environment variable. **Restart your terminal** after running `gp init` before using any other commands.
+The settings are written to your shell configuration file (e.g. `~/.zshrc`, `~/.bashrc`) as an environment variable. **Restart your terminal** after running `gpx init` before using any other commands.
 
 ---
 
-### `gp add-wallet`
+### `gpx add-wallet`
 
 Add a Solana wallet to local storage.
 
@@ -141,14 +141,14 @@ Add a Solana wallet to local storage.
 
 **Prerequisites:**
 
-`gp init` must be run and your terminal restarted before adding wallets.
+`gpx init` must be run and your terminal restarted before adding wallets.
 
 **Key input (pick one):**
 - `--keypair-file <path>` — path to a Solana keypair JSON file
 - `--private-key <value>` — inline Base58 string or JSON byte array
 - *(neither flag)* — interactive password-masked prompt
 
-All wallet private keys are **always encrypted** (AES-256-GCM) using the master key set by `gp init`. 
+All wallet private keys are **always encrypted** (AES-256-GCM) using the master key set by `gpx init`. 
 
 `--private-key` command option is given only for user convenience and should be avoided if possible.
 
@@ -162,7 +162,7 @@ All wallet private keys are **always encrypted** (AES-256-GCM) using the master 
 
 ---
 
-### `gp remove-wallet`
+### `gpx remove-wallet`
 
 Remove a saved wallet from local storage.
 
@@ -179,7 +179,7 @@ Remove a saved wallet from local storage.
 
 ---
 
-### `gp list-wallets`
+### `gpx list-wallets`
 
 List all saved wallet public keys and their labels.
 
@@ -199,7 +199,7 @@ List all saved wallet public keys and their labels.
 
 ---
 
-### `gp close-empty`
+### `gpx close-empty`
 
 Scan and close empty SPL token accounts, reclaiming locked rent SOL.
 
@@ -247,7 +247,7 @@ On error:
 
 ---
 
-### `gp stats`
+### `gpx stats`
 
 Show Ghost Point and SOL earnings for the current and previous epoch, plus lifetime stats.
 
@@ -328,7 +328,7 @@ On error:
 
 ---
 
-### `gp claim-soul`
+### `gpx claim-soul`
 
 Claim SOUL tokens earned in the previous epoch. The backend Community Wallet handles all on-chain signing — **no local keypair signing is required**.
 
@@ -379,7 +379,7 @@ On error:
 
 ## Agent / CI Usage
 
-For automated pipelines, run `gp init` once during environment setup  in the agent's shell session.
+For automated pipelines, run `gpx init` once during environment setup  in the agent's shell session.
 
 Combine `--wallet`, `--all`, `--yes`, and `--json` for fully unattended pipelines.
 
@@ -387,22 +387,22 @@ Combine `--wallet`, `--all`, `--yes`, and `--json` for fully unattended pipeline
 
 ```bash
 # Step 1: Initialize once (restart terminal / source shell config after)
-gp init
+gpx init
 
 # Add a wallet non-interactively
-gp add-wallet --keypair-file ~/.config/solana/id.json --name "Bot Wallet" --json
+gpx add-wallet --keypair-file ~/.config/solana/id.json --name "Bot Wallet" --json
 
 # Close empty accounts for one wallet, auto-confirm, JSON output
-gp close-empty --wallet <address> --yes --json
+gpx close-empty --wallet <address> --yes --json
 
 # Close empty accounts for all saved wallets
-gp close-empty --all --yes --json
+gpx close-empty --all --yes --json
 
 # Fetch stats for all wallets as JSON
-gp stats --all --json
+gpx stats --all --json
 
 # Claim SOUL for all wallets (auto-confirms in JSON mode)
-gp claim-soul --all --json
+gpx claim-soul --all --json
 ```
 
 JSON output is **newline-delimited** when `--all` is used with `close-empty`, making it easy to stream and parse per-wallet results in real time.
@@ -416,7 +416,7 @@ JSON output is **newline-delimited** when `--all` is used with `close-empty`, ma
 ```
 CLI                           Backend                      Solana
  │                               │                            │
- ├─ gp close-empty               │                            │
+ ├─ gpx close-empty              │                            │
  │                               │                            │
  ├──── GET /scan/{wallet} ───────►                            │
  │◄─── { total_accounts, SOL } ──┤  scans on-chain ──────────►
@@ -443,7 +443,7 @@ CLI                           Backend                      Solana
 ```
 CLI                           Backend                      Solana
  │                               │                            │
- ├─ gp claim-soul                │                            │
+ ├─ gpx claim-soul               │                            │
  │                               │                            │
  ├──── GET /epoch/data/{wallet} ─►                            │
  │◄─── { previousEpoch: {       ─┤                            │
@@ -452,7 +452,7 @@ CLI                           Backend                      Solana
  ├── show summary, confirm ──────►                            │
  │                               │                            │
  ├──── POST /soul/claim ─────────►                            │
- │◄─── { txSignature } ──────────┤  builds ATA + transfer ───►
+ │◄─── { txSignature } ──────────┤  builds ATA + transfer ───►│
  │                               │◄─ confirmed ───────────────┤
 ```
 
@@ -472,13 +472,13 @@ SOUL transfers are signed and submitted entirely by the backend using the Commun
 
 ### Epochs & SOUL Distribution
 
-Epochs run weekly, starting Monday 00:00 UTC. At the close of each epoch, SOUL tokens are distributed proportionally based on each participant's share of total Ghost Points earned. Use `gp stats` to track your share before claiming.
+Epochs run weekly, starting Monday 00:00 UTC. At the close of each epoch, SOUL tokens are distributed proportionally based on each participant's share of total Ghost Points earned. Use `gpx stats` to track your share before claiming.
 
 ---
 
 ## Security
 
-- Encryption settings are generated by `gp init` and stored in your shell environment
+- Encryption settings are generated by `gpx init` and stored in your shell environment
 - Private keys are encrypted with **AES-256-GCM** (PBKDF2 key derivation,
 100 000 iterations)
 - Stored at `~/.gp-cli/wallets.json` — never transmitted

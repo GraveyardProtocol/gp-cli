@@ -244,7 +244,7 @@ export default async function stats(options) {
     // ── --all mode ────────────────────────────────────────────────────────
     if (options.all) {
       if (!walletFile.wallets.length) {
-        throw new Error('No wallets saved. Run `gp add-wallet` first.');
+        throw new Error('No wallets saved. Run `gpx add-wallet` first.');
       }
 
       if (!jsonMode) printInfo(`Fetching stats for ${walletFile.wallets.length} wallet(s)...\n`);
