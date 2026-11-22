@@ -1,0 +1,47 @@
+# ==========================================
+# 1. CORE SITE & SEO METADATA
+# ==========================================
+title: "Graveyard Protocol CLI"
+description: "Graveyard Protocol CLI (gp-cli) is a Solana utility for automated multi wallet cleanup, SOL rent recovery by burning worthless tokens and closing empty token accounts, scheduled tasks, and AI agent integration."
+url: "https://github.io" # Your base GitHub Pages URL (no trailing slash)
+baseurl: ""             # Your repository name (leave as "" if using username.github.io)
+lang: en_US                            # Helps search engines understand the language
+
+# ==========================================
+# 2. AUTHOR & SOCIAL CREDENTIALS (Rich Snippets)
+# ==========================================
+author:
+  name: "Graveyard Protocol"
+  url: "https://graveyardprotocol.io"
+
+twitter:
+  username: GraveyardProto          # Generates Twitter Summary Cards
+  card: summary_large_image
+
+social:
+  name: "Graveyard Protocol"
+  links:
+    - https://github.com/GraveyardProtocol
+    - https://x.com/GraveyardProto
+    - https://t.me/graveyardprotocol
+
+# ==========================================
+# 3. THEME & MARKDOWN SETTINGS
+# ==========================================
+theme: jekyll-theme-cayman             # Built-in GitHub Pages theme (includes jekyll-seo-tag by default)
+markdown: kramdown
+show_downloads: false                  # Set to true if you want ZIP/TAR download buttons in the header
+
+# ==========================================
+# 4. SEO PLUGINS & DEFAULTS
+# ==========================================
+plugins:
+  - jekyll-seo-tag                     # Automatically injects Open Graph, JSON-LD, and canonical tags
+  - jekyll-sitemap                     # Auto-generates /sitemap.xml for Google Search Console
+
+# Default social share preview image (1200x630px recommended)
+defaults:
+  - scope:
+      path: ""
+    values:
+      image: https://graveyardprotocol.io/images/twitterBanner.webp
