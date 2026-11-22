@@ -28,8 +28,8 @@ social:
 # ==========================================
 # 3. THEME & MARKDOWN SETTINGS
 # ==========================================
-theme: jekyll-theme-cayman             # Built-in GitHub Pages theme (includes jekyll-seo-tag by default)
-markdown: kramdown
+theme: jekyll-theme-primer             # Built-in GitHub Pages theme (includes jekyll-seo-tag by default)
+markdown: GFM
 show_downloads: false                  # Set to true if you want ZIP/TAR download buttons in the header
 
 # ==========================================
