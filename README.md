@@ -2,8 +2,8 @@
  
 A command-line tool for Humans and Skill for OpenClaw, Claude Code, and AI agents 
 to interact with Graveyard Protocol on Solana. It scans your wallets for empty SPL token accounts, closes them in
-batches, and returns the locked rent SOL to you — keeping ~80% for you and
-taking a 20% protocol fee. Ghost Points are earned per closed account and
+batches, and returns the locked rent SOL to you — taking a 2% protocol fee. 
+Ghost Points are earned per closed account and
 accumulate toward weekly SOUL token distributions.
 
 Private keys are always encrypted with AES-256-GCM and stored locally. They are never transmitted anywhere at any time.
@@ -464,8 +464,7 @@ SOUL transfers are signed and submitted entirely by the backend using the Commun
 
 | Item | Value |
 |---|---|
-| Protocol fee | 20% of reclaimed rent per batch |
-| You receive | ~80% of total locked SOL |
+| Protocol fee | 2% of reclaimed rent per batch |
 | Ghost Points | 100 points per closed account |
 | Referral bonus | 10% of referred user's Ghost Points credited to referrer |
 | Average rent per account | ~0.00204 SOL |
